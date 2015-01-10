@@ -196,7 +196,7 @@ namespace BrianSharp.Common
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             if (!sender.IsMe) return;
-            if (Orbwalking.IsAutoAttackReset(args.SData.Name)) Utility.DelayAction.Add(100, ResetAutoAttack);
+            if (Orbwalking.IsAutoAttackReset(args.SData.Name)) Utility.DelayAction.Add(250, ResetAutoAttack);
             if (!args.SData.IsAutoAttack()) return;
             if (args.Target is AttackableUnit)
             {

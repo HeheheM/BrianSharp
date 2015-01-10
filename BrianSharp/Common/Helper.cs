@@ -35,36 +35,21 @@ namespace BrianSharp.Common
             return Skill.GetHealthPrediction(Target) + 5 <= (SubDmg > 0 ? SubDmg : Skill.GetDamage(Target, Stage));
         }
 
-        public static bool FlashReady()
-        {
-            return Flash != SpellSlot.Unknown && Flash.IsReady();
-        }
-
-        public static bool SmiteReady()
-        {
-            return Smite != SpellSlot.Unknown && Smite.IsReady();
-        }
-
-        public static bool IgniteReady()
-        {
-            return Ignite != SpellSlot.Unknown && Ignite.IsReady();
-        }
-
         public static bool CastFlash(Vector3 Pos)
         {
-            if (!FlashReady() || !Pos.IsValid()) return false;
+            if (!Flash.IsReady() || !Pos.IsValid()) return false;
             return Player.Spellbook.CastSpell(Flash, Pos);
         }
 
         public static bool CastSmite(Obj_AI_Base Target, bool Killable = true)
         {
-            if (!SmiteReady() || !Target.IsValidTarget(760) || (Killable && Target.Health > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Smite))) return false;
+            if (!Smite.IsReady() || !Target.IsValidTarget(760) || (Killable && Target.Health > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Smite))) return false;
             return Player.Spellbook.CastSpell(Smite, Target);
         }
 
         public static bool CastIgnite(Obj_AI_Hero Target)
         {
-            if (!IgniteReady() || !Target.IsValidTarget(600) || Target.Health + 5 > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Ignite)) return false;
+            if (!Ignite.IsReady() || !Target.IsValidTarget(600) || Target.Health + 5 > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Ignite)) return false;
             return Player.Spellbook.CastSpell(Ignite, Target);
         }
 
@@ -86,7 +71,7 @@ namespace BrianSharp.Common
 
         public static bool CanSmiteMob(string Name)
         {
-            if (!SmiteReady() || Name.Contains("Mini")) return false;
+            if (!Smite.IsReady() || Name.Contains("Mini")) return false;
             if (ItemBool("SmiteMob", "Baron") && Name.StartsWith("SRU_Baron")) return true;
             if (ItemBool("SmiteMob", "Dragon") && Name.StartsWith("SRU_Dragon")) return true;
             if (ItemBool("SmiteMob", "Red") && Name.StartsWith("SRU_Red")) return true;

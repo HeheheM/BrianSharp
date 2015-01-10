@@ -16,6 +16,7 @@ namespace BrianSharp.Plugin
         private bool QCasted = false, WCasted = false, ECasted = false, WillInAA = false;
         private Obj_AI_Hero RTarget = null;
         private Vector3 REndPos = new Vector3();
+        private bool RKillable = false;
 
         public Lucian()
         {
@@ -26,8 +27,8 @@ namespace BrianSharp.Plugin
             R = new Spell(SpellSlot.R, 1460);
             Q.SetTargetted(0.35f, float.MaxValue);
             Q2.SetSkillshot(0.35f, 65, float.MaxValue, false, SkillshotType.SkillshotLine);
-            W.SetSkillshot(0.33f, 80, 1650, true, SkillshotType.SkillshotLine);
-            R.SetSkillshot(0, 60, 2800, true, SkillshotType.SkillshotLine);
+            W.SetSkillshot(0.33f, 80, 1470, true, SkillshotType.SkillshotLine);
+            R.SetSkillshot(0.2f, 60, 2900, true, SkillshotType.SkillshotLine);
 
             var ChampMenu = new Menu("Plugin", PlayerName + "Plugin");
             {
@@ -35,14 +36,15 @@ namespace BrianSharp.Plugin
                 {
                     ItemBool(ComboMenu, "Passive", "Use Passive");
                     ItemBool(ComboMenu, "Q", "Use Q");
+                    ItemBool(ComboMenu, "ExtendQ", "-> Extend Q");
                     ItemBool(ComboMenu, "W", "Use W");
                     ItemBool(ComboMenu, "PredW", "-> W Prediction");
                     ItemBool(ComboMenu, "E", "Use E");
+                    ItemBool(ComboMenu, "GapE", "-> Gap Closer");
                     ItemSlider(ComboMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 2000, 0, 4000);
                     ItemBool(ComboMenu, "R", "Use R If Killable");
                     ItemBool(ComboMenu, "YoumuuR", "-> Use Youmuu For Max Damage");
                     ItemBool(ComboMenu, "CancelR", "-> Stop R For Kill Steal");
-                    ItemBool(ComboMenu, "Ignite", "Auto Ignite If Killable");
                     ChampMenu.AddSubMenu(ComboMenu);
                 }
                 var HarassMenu = new Menu("Harass", "Harass");
@@ -66,6 +68,7 @@ namespace BrianSharp.Plugin
                 {
                     ItemBool(MiscMenu, "QKillSteal", "Use Q To Kill Steal");
                     ItemBool(MiscMenu, "WKillSteal", "Use W To Kill Steal");
+                    ItemBool(MiscMenu, "IgniteKillSteal", "Use Ignite To Kill Steal");
                     ItemBool(MiscMenu, "LockR", "Lock R On Target");
                     ChampMenu.AddSubMenu(MiscMenu);
                 }
@@ -98,6 +101,7 @@ namespace BrianSharp.Plugin
             {
                 RTarget = null;
                 REndPos = new Vector3();
+                RKillable = false;
             }
             if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
@@ -122,19 +126,19 @@ namespace BrianSharp.Plugin
             if (args.SData.Name == "LucianQ")
             {
                 QCasted = true;
-                Utility.DelayAction.Add(280, () => QCasted = false);
+                Utility.DelayAction.Add(350, () => QCasted = false);
             }
             if (args.SData.Name == "LucianW")
             {
                 WCasted = true;
-                Utility.DelayAction.Add(350, () => WCasted = false);
+                Utility.DelayAction.Add(330, () => WCasted = false);
             }
             if (args.SData.Name == "LucianE")
             {
                 ECasted = true;
-                Utility.DelayAction.Add(250, () => ECasted = false);
+                Utility.DelayAction.Add(280, () => ECasted = false);
             }
-            if (args.SData.Name == "LucianR") REndPos = (Player.ServerPosition - (Player.ServerPosition.To2D() + R.Range * Player.Direction.To2D().Perpendicular()).To3D()).Normalized();
+            if (args.SData.Name == "LucianR" && !RKillable) REndPos = (Player.ServerPosition - (Player.ServerPosition.To2D() + R.Range * Player.Direction.To2D().Perpendicular()).To3D()).Normalized();
         }
 
         private void AfterAttack(AttackableUnit Target)
@@ -165,13 +169,13 @@ namespace BrianSharp.Plugin
             }
             if (ItemBool(Mode, "W") && W.CanCast(TS.Target) && CanKill(TS.Target, W))
             {
-                if (W.GetPrediction(TS.Target).Hitchance >= HitChance.Low)
+                if (W.GetPrediction(TS.Target).Hitchance >= HitChance.Medium)
                 {
                     W.Cast(W.GetPrediction(TS.Target).CastPosition, PacketCast);
                 }
                 else
                 {
-                    foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget() && !(i is Obj_AI_Turret) && i.Distance(TS.Target, true) <= W.WidthSqr && W.GetPrediction(i).Hitchance >= HitChance.Low)) W.Cast(W.GetPrediction(Obj).CastPosition, PacketCast);
+                    foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget() && !(i is Obj_AI_Turret) && i.Distance(TS.Target, true) <= W.WidthSqr && W.GetPrediction(i).Hitchance >= HitChance.Medium)) W.Cast(W.GetPrediction(Obj).CastPosition, PacketCast);
                 }
             }
             if (Mode == "Combo" && ItemBool(Mode, "R") && R.CanCast(TS.Target) && CanKill(TS.Target, R, GetRDmg(TS.Target)))
@@ -180,39 +184,42 @@ namespace BrianSharp.Plugin
                 {
                     R.Cast(TS.Target.ServerPosition, PacketCast);
                     RTarget = TS.Target;
+                    RKillable = true;
+                    REndPos = (Player.ServerPosition - TS.Target.ServerPosition).Normalized();
                     if (ItemBool(Mode, "YoumuuR") && Youmuu.IsReady()) Utility.DelayAction.Add(10, () => Youmuu.Cast());
                 }
                 else if (Player.Distance(TS.Target, true) > Math.Pow(800, 2) && Player.Distance(TS.Target, true) <= Math.Pow(1075, 2))
                 {
                     R.Cast(TS.Target.ServerPosition, PacketCast);
                     RTarget = TS.Target;
+                    RKillable = true;
+                    REndPos = (Player.ServerPosition - TS.Target.ServerPosition).Normalized();
                     if (ItemBool(Mode, "YoumuuR") && Youmuu.IsReady()) Utility.DelayAction.Add(10, () => Youmuu.Cast());
                 }
             }
-            if (Mode == "Combo" && ItemBool(Mode, "E") && E.IsReady() && !Orbwalk.InAutoAttackRange(TS.Target) && TS.Target.Distance(Player.ServerPosition.Extend(Game.CursorPos, E.Range)) + 20 <= Orbwalk.GetAutoAttackRange(Player, TS.Target)) E.Cast(Game.CursorPos, PacketCast);
-            if (Mode == "Combo" && ItemBool(Mode, "Ignite") && IgniteReady()) CastIgnite(TS.Target);
+            if (Mode == "Combo" && ItemBool(Mode, "E") && ItemBool(Mode, "GapE") && E.IsReady() && !Orbwalk.InAutoAttackRange(TS.Target) && TS.Target.Distance(Player.ServerPosition.Extend(Game.CursorPos, E.Range)) + 20 <= Orbwalk.GetAutoAttackRange(Player, TS.Target)) E.Cast(Game.CursorPos, PacketCast);
             if (!ItemBool(Mode, "E") || (ItemBool(Mode, "E") && (!E.IsReady() || (Mode == "Combo" && E.IsReady() && !WillInAA && Orbwalk.InAutoAttackRange(TS.Target)))))
             {
                 if (Mode == "Combo" && ItemBool(Mode, "E") && E.IsReady(ItemSlider(Mode, "EDelay"))) return;
                 if (ItemBool(Mode, "Q") && Q.IsReady())
                 {
-                    if ((Orbwalk.InAutoAttackRange(TS.Target) && !HavePassive(Mode)) || (Player.Distance(TS.Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, TS.Target) + 20, 2) && Q.IsInRange(TS.Target)))
+                    if ((Orbwalk.InAutoAttackRange(TS.Target) && !HavePassive(Mode)) || (Player.Distance(TS.Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, TS.Target) + 40, 2) && Q.IsInRange(TS.Target)))
                     {
                         Q.CastOnUnit(TS.Target, PacketCast);
                     }
-                    else if (!Q.IsInRange(TS.Target) && Q2.IsInRange(TS.Target) && GetQ2Collision(TS.Target) != null) Q.CastOnUnit(GetQ2Collision(TS.Target), PacketCast);
+                    else if ((Mode == "Harass" || (Mode == "Combo" && ItemBool(Mode, "ExtendQ"))) && !Q.IsInRange(TS.Target) && Q2.IsInRange(TS.Target) && GetQ2Collision(TS.Target) != null) Q.CastOnUnit(GetQ2Collision(TS.Target), PacketCast);
                 }
-                if ((!ItemBool(Mode, "Q") || (ItemBool(Mode, "Q") && !Q.IsReady())) && ItemBool(Mode, "W") && W.IsReady() && ((Orbwalk.InAutoAttackRange(TS.Target) && !HavePassive(Mode)) || (Player.Distance(TS.Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, TS.Target) + 20, 2) && W.IsInRange(TS.Target))))
+                if ((!ItemBool(Mode, "Q") || (ItemBool(Mode, "Q") && !Q.IsReady())) && ItemBool(Mode, "W") && W.IsReady() && ((Orbwalk.InAutoAttackRange(TS.Target) && !HavePassive(Mode)) || (Player.Distance(TS.Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, TS.Target) + 40, 2) && W.IsInRange(TS.Target))))
                 {
                     if (Mode == "Harass" || (Mode == "Combo" && ItemBool(Mode, "PredW")))
                     {
-                        if (W.GetPrediction(TS.Target).Hitchance >= HitChance.Low)
+                        if (W.GetPrediction(TS.Target).Hitchance >= HitChance.Medium)
                         {
                             W.Cast(W.GetPrediction(TS.Target).CastPosition, PacketCast);
                         }
                         else
                         {
-                            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget() && !(i is Obj_AI_Turret) && i.Distance(TS.Target, true) <= W.WidthSqr && W.GetPrediction(i).Hitchance >= HitChance.Low)) W.Cast(W.GetPrediction(Obj).CastPosition, PacketCast);
+                            foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget() && !(i is Obj_AI_Turret) && i.Distance(TS.Target, true) <= W.WidthSqr && W.GetPrediction(i).Hitchance >= HitChance.Medium)) W.Cast(W.GetPrediction(Obj).CastPosition, PacketCast);
                         }
                     }
                     else if (Mode == "Combo" && !ItemBool(Mode, "PredW")) W.Cast(W.GetPrediction(TS.Target).CastPosition, PacketCast);
@@ -246,41 +253,47 @@ namespace BrianSharp.Plugin
 
         private void KillSteal()
         {
-            if (Player.IsDashing() || ((!ItemBool("Combo", "R") || (ItemBool("Combo", "R") && !ItemBool("Combo", "CancelR"))) && Player.IsChannelingImportantSpell())) return;
-            var CancelR = ItemBool("Combo", "R") && ItemBool("Combo", "CancelR") && Player.IsChannelingImportantSpell() && R.IsReady();
-            if (ItemBool("Misc", "QKillSteal") && Q.IsReady())
+            if (Player.IsDashing()) return;
+            if (ItemBool("Misc", "QKillSteal") || ItemBool("Misc", "WKillSteal") || ItemBool("Misc", "IgniteKillSteal"))
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(Q2.Range) && CanKill(i, Q) && i != TS.Target).OrderBy(i => i.Health).OrderBy(i => i.Distance(Player, true)))
+                var CancelR = ItemBool("Combo", "R") && ItemBool("Combo", "CancelR") && Player.IsChannelingImportantSpell() && R.IsReady();
+                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(Q2.Range)).OrderBy(i => i.Health).OrderBy(i => i.Distance(Player, true)))
                 {
-                    if (Q.IsInRange(Obj))
+                    if (Obj != TS.Target)
                     {
-                        if (CancelR) R.Cast(PacketCast);
-                        Q.CastOnUnit(Obj, PacketCast);
-                    }
-                    else if (GetQ2Collision(Obj) != null)
-                    {
-                        if (CancelR) R.Cast(PacketCast);
-                        Q.CastOnUnit(GetQ2Collision(Obj), PacketCast);
-                    }
-                }
-            }
-            if (ItemBool("Misc", "WKillSteal") && W.IsReady())
-            {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(W.Range) && CanKill(i, W) && i != TS.Target).OrderBy(i => i.Health).OrderBy(i => i.Distance(Player, true)))
-                {
-                    if (W.GetPrediction(Obj).Hitchance >= HitChance.Low)
-                    {
-                        if (CancelR) R.Cast(PacketCast);
-                        W.Cast(W.GetPrediction(Obj).CastPosition, PacketCast);
-                    }
-                    else
-                    {
-                        foreach (var Col in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget() && !(i is Obj_AI_Turret) && i.Distance(Obj, true) <= W.WidthSqr && W.GetPrediction(i).Hitchance >= HitChance.Low))
+                        if (ItemBool("Misc", "IgniteKillSteal")) CastIgnite(Obj);
+                        if ((!ItemBool("Combo", "R") || (ItemBool("Combo", "R") && !ItemBool("Combo", "CancelR"))) && Player.IsChannelingImportantSpell()) break;
+                        if (ItemBool("Misc", "QKillSteal") && Q.IsReady() && CanKill(Obj, Q))
                         {
-                            if (CancelR) R.Cast(PacketCast);
-                            W.Cast(W.GetPrediction(Col).CastPosition, PacketCast);
+                            if (Q.IsInRange(Obj))
+                            {
+                                if (CancelR) R.Cast(PacketCast);
+                                Q.CastOnUnit(Obj, PacketCast);
+                            }
+                            else if (GetQ2Collision(Obj) != null)
+                            {
+                                if (CancelR) R.Cast(PacketCast);
+                                Q.CastOnUnit(GetQ2Collision(Obj), PacketCast);
+                            }
+                        }
+                        if (ItemBool("Misc", "WKillSteal") && W.CanCast(Obj) && CanKill(Obj, W))
+                        {
+                            if (W.GetPrediction(Obj).Hitchance >= HitChance.Medium)
+                            {
+                                if (CancelR) R.Cast(PacketCast);
+                                W.Cast(W.GetPrediction(Obj).CastPosition, PacketCast);
+                            }
+                            else
+                            {
+                                foreach (var Col in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget() && !(i is Obj_AI_Turret) && i.Distance(Obj, true) <= W.WidthSqr && W.GetPrediction(i).Hitchance >= HitChance.Medium))
+                                {
+                                    if (CancelR) R.Cast(PacketCast);
+                                    W.Cast(W.GetPrediction(Col).CastPosition, PacketCast);
+                                }
+                            }
                         }
                     }
+                    else if (ItemBool("Misc", "IgniteKillSteal") && (!ItemBool("Combo", "Q") || (ItemBool("Combo", "Q") && !Q.IsReady())) && (!ItemBool("Combo", "W") || (ItemBool("Combo", "W") && !W.IsReady())) && (!ItemBool("Combo", "R") || (ItemBool("Combo", "R") && !R.IsReady()))) Utility.DelayAction.Add(1000, () => CastIgnite(Obj));
                 }
             }
         }
@@ -334,13 +347,13 @@ namespace BrianSharp.Plugin
         {
             var Pred = new PredictionInput
             {
-                Range = Q2.Range,
+                Range = Q.Range,
                 Delay = Q2.Delay,
                 Radius = Q2.Width,
                 Speed = Q2.Speed,
                 CollisionObjects = new CollisionableObjects[] { CollisionableObjects.Heroes, CollisionableObjects.Minions }
             };
-            return LeagueSharp.Common.Collision.GetCollision(new List<Vector3> { Target.ServerPosition }, Pred).FirstOrDefault(i => Q.IsInRange(i) && Q2.WillHit(i, Target.ServerPosition, 0, HitChance.VeryHigh));
+            return LeagueSharp.Common.Collision.GetCollision(new List<Vector3> { Target.ServerPosition }, Pred).FirstOrDefault(i => Q2.WillHit(i, Target.ServerPosition, 0, HitChance.VeryHigh));
         }
     }
 }
