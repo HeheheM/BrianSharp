@@ -11,7 +11,7 @@ namespace BrianSharp.Common
     public class Orbwalker
     {
         private static Menu Config;
-        private static Obj_AI_Hero Player = ObjectManager.Player;
+        private static readonly Obj_AI_Hero Player = ObjectManager.Player;
         public static Obj_AI_Hero ForcedTarget = null;
         private static Obj_AI_Minion PrevMinion = null;
         public enum Mode
@@ -137,7 +137,7 @@ namespace BrianSharp.Common
                 Drawing.OnDraw += OnDraw;
                 Obj_AI_Hero.OnInstantStopAttack += OnInstantStopAttack;
                 Obj_AI_Hero.OnProcessSpellCast += OnProcessSpellCast;
-                Obj_SpellMissile.OnCreate += OnCreateObjMissile;
+                GameObject.OnCreate += OnCreateObjMissile;
                 Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>Orbwalker</font>: <font color = \'{2}'>Loaded !</font>", HTMLColor.BlueViolet, HTMLColor.Gold, HTMLColor.Cyan);
             }
             catch
@@ -156,12 +156,12 @@ namespace BrianSharp.Common
         private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead) return;
-            if (Config.Item("OW_Draw_AARange").GetValue<Circle>().Active) Render.Circle.DrawCircle(Player.Position, GetAutoAttackRange(), Config.Item("OW_Draw_AARange").GetValue<Circle>().Color, 7);
+            if (Config.Item("OW_Draw_AARange").GetValue<Circle>().Active) Render.Circle.DrawCircle(Player.Position, GetAutoAttackRange(), Config.Item("OW_Draw_AARange").GetValue<Circle>().Color);
             if (Config.Item("OW_Draw_AARangeEnemy").GetValue<Circle>().Active)
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(1300))) Render.Circle.DrawCircle(Obj.Position, GetAutoAttackRange(Obj, Player), Config.Item("OW_Draw_AARangeEnemy").GetValue<Circle>().Color, 7);
+                foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(1300))) Render.Circle.DrawCircle(Obj.Position, GetAutoAttackRange(Obj, Player), Config.Item("OW_Draw_AARangeEnemy").GetValue<Circle>().Color);
             }
-            if (Config.Item("OW_Draw_HoldZone").GetValue<Circle>().Active) Render.Circle.DrawCircle(Player.Position, Config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value, Config.Item("OW_Draw_HoldZone").GetValue<Circle>().Color, 7);
+            if (Config.Item("OW_Draw_HoldZone").GetValue<Circle>().Active) Render.Circle.DrawCircle(Player.Position, Config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value, Config.Item("OW_Draw_HoldZone").GetValue<Circle>().Color);
             if (Config.Item("OW_Draw_HpBar").GetValue<Circle>().Active || Config.Item("OW_Draw_LastHit").GetValue<Circle>().Active || Config.Item("OW_Draw_NearKill").GetValue<Circle>().Active)
             {
                 foreach (var Obj in MinionManager.GetMinions(GetAutoAttackRange() + 500, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth))
@@ -171,18 +171,17 @@ namespace BrianSharp.Common
                         var KillHit = Math.Ceiling(Obj.MaxHealth / Player.GetAutoAttackDamage(Obj, true));
                         var HpBarWidth = Obj.IsMelee() ? 75 : 80;
                         if (Obj.HasBuff("turretshield", true)) HpBarWidth = 70;
-                        var HpBarDist = (float)(HpBarWidth / KillHit);
                         for (var i = 1; i < KillHit; i++)
                         {
-                            var StartPos = Obj.HPBarPosition.X + 45 + HpBarDist * i;
-                            Drawing.DrawLine(new Vector2(StartPos, Obj.HPBarPosition.Y + 18), new Vector2(StartPos, Obj.HPBarPosition.Y + 23), Config.Item("OW_Draw_HpBarThickness").GetValue<Slider>().Value, Config.Item("OW_Draw_HpBar").GetValue<Circle>().Color);
+                            var PosX = Obj.HPBarPosition.X + 45 + (float)(HpBarWidth / KillHit) * i;
+                            Drawing.DrawLine(new Vector2(PosX, Obj.HPBarPosition.Y + 18), new Vector2(PosX, Obj.HPBarPosition.Y + 23), Config.Item("OW_Draw_HpBarThickness").GetValue<Slider>().Value, Config.Item("OW_Draw_HpBar").GetValue<Circle>().Color);
                         }
                     }
                     if (Config.Item("OW_Draw_LastHit").GetValue<Circle>().Active && Obj.Health <= Player.GetAutoAttackDamage(Obj, true))
                     {
-                        Render.Circle.DrawCircle(Obj.Position, Obj.BoundingRadius, Config.Item("OW_Draw_LastHit").GetValue<Circle>().Color, 7);
+                        Render.Circle.DrawCircle(Obj.Position, Obj.BoundingRadius, Config.Item("OW_Draw_LastHit").GetValue<Circle>().Color);
                     }
-                    else if (Config.Item("OW_Draw_NearKill").GetValue<Circle>().Active && Obj.Health <= Player.GetAutoAttackDamage(Obj, true) * 2) Render.Circle.DrawCircle(Obj.Position, Obj.BoundingRadius, Config.Item("OW_Draw_NearKill").GetValue<Circle>().Color, 7);
+                    else if (Config.Item("OW_Draw_NearKill").GetValue<Circle>().Active && Obj.Health <= Player.GetAutoAttackDamage(Obj, true) * 2) Render.Circle.DrawCircle(Obj.Position, Obj.BoundingRadius, Config.Item("OW_Draw_NearKill").GetValue<Circle>().Color);
                 }
             }
         }
@@ -198,13 +197,14 @@ namespace BrianSharp.Common
             if (!sender.IsMe) return;
             if (Orbwalking.IsAutoAttackReset(args.SData.Name)) Utility.DelayAction.Add(250, ResetAutoAttack);
             if (!args.SData.IsAutoAttack()) return;
-            if (args.Target is AttackableUnit)
+            if (args.Target is Obj_AI_Base)
             {
                 LastAttack = Environment.TickCount - Game.Ping / 2;
-                if (args.Target.IsValid)
+                var Target = (Obj_AI_Base)args.Target;
+                if (Target.IsValid)
                 {
-                    FireOnTargetSwitch((AttackableUnit)args.Target);
-                    LastTarget = (AttackableUnit)args.Target;
+                    FireOnTargetSwitch(Target);
+                    LastTarget = Target;
                 }
                 if (sender.IsMelee()) Utility.DelayAction.Add((int)(sender.AttackCastDelay * 1000 + 40), () => FireAfterAttack(LastTarget));
                 FireOnAttack(LastTarget);
@@ -213,6 +213,7 @@ namespace BrianSharp.Common
 
         private static void OnCreateObjMissile(GameObject sender, EventArgs args)
         {
+            if (sender is Obj_LampBulb) return;
             if (!sender.IsValid<Obj_SpellMissile>()) return;
             var missile = (Obj_SpellMissile)sender;
             if (!missile.SData.IsAutoAttack()) return;
@@ -390,7 +391,6 @@ namespace BrianSharp.Common
         public static AttackableUnit GetPossibleTarget()
         {
             AttackableUnit Target = null;
-            var R = float.MaxValue;
             if (Config.Item("OW_Misc_PriorityUnit").GetValue<StringList>().SelectedIndex == 1 && (CurrentMode == Mode.Harass || CurrentMode == Mode.LaneClear))
             {
                 Target = GetBestHeroTarget();
@@ -420,11 +420,8 @@ namespace BrianSharp.Common
             }
             if (CurrentMode == Mode.Harass || CurrentMode == Mode.LaneClear)
             {
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => InAutoAttackRange(i) && i.Team == GameObjectTeam.Neutral && (i.MaxHealth >= R || Math.Abs(R - float.MaxValue) < float.Epsilon)))
-                {
-                    Target = Obj;
-                    R = Obj.MaxHealth;
-                }
+                Target = ObjectManager.Get<Obj_AI_Minion>().Where(i => InAutoAttackRange(i) && i.Team == GameObjectTeam.Neutral).MaxOrDefault(i => i.MaxHealth);
+                if (Target != null) return Target;
             }
             if (CurrentMode == Mode.LaneClear && !ShouldWait())
             {
@@ -433,16 +430,11 @@ namespace BrianSharp.Common
                     var HpPred = HealthPrediction.LaneClearHealthPrediction(PrevMinion, (int)(Player.AttackDelay * 1000 * ClearWaitTime), GetCurrentFarmDelay);
                     if (HpPred >= 2 * (Player.ChampionName == "Azir" ? GetAzirWDamage(PrevMinion) : Player.GetAutoAttackDamage(PrevMinion, true)) || Math.Abs(HpPred - PrevMinion.Health) < float.Epsilon) return PrevMinion;
                 }
-                foreach (var Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => InAutoAttackRange(i)))
-                {
-                    var HpPred = HealthPrediction.LaneClearHealthPrediction(Obj, (int)(Player.AttackDelay * 1000 * ClearWaitTime), GetCurrentFarmDelay);
-                    if ((HpPred >= 2 * (Player.ChampionName == "Azir" ? GetAzirWDamage(Obj) : Player.GetAutoAttackDamage(Obj, true)) || Math.Abs(HpPred - Obj.Health) < float.Epsilon) && (Obj.Health >= R || Math.Abs(R - float.MaxValue) < float.Epsilon))
-                    {
-                        Target = Obj;
-                        R = Obj.Health;
-                        PrevMinion = Obj;
-                    }
-                }
+                Target = (from Obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => InAutoAttackRange(i))
+                          let HpPred = HealthPrediction.LaneClearHealthPrediction(Obj, (int)(Player.AttackDelay * 1000 * ClearWaitTime), GetCurrentFarmDelay)
+                          where HpPred >= 2 * (Player.ChampionName == "Azir" ? GetAzirWDamage(Obj) : Player.GetAutoAttackDamage(Obj, true)) || Math.Abs(HpPred - Obj.Health) < float.Epsilon
+                          select Obj).MaxOrDefault(i => i.Health);
+                if (Target != null) PrevMinion = (Obj_AI_Minion)Target;
             }
             return Target;
         }
@@ -465,7 +457,7 @@ namespace BrianSharp.Common
                 foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => InAutoAttackRange(i) && (BestObj == null || GetAzirWDamage(i) > GetAzirWDamage(BestObj)))) BestObj = Obj;
                 if (BestObj != null) return BestObj;
             }
-            return HitsToKill <= 3 ? KillableObj : LeagueSharp.Common.TargetSelector.GetTarget(-1, LeagueSharp.Common.TargetSelector.DamageType.Physical);
+            return HitsToKill <= 3 ? KillableObj : TargetSelector.GetTarget(-1, TargetSelector.DamageType.Physical);
         }
 
         private static void FireBeforeAttack(AttackableUnit Target)

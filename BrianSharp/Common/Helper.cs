@@ -10,9 +10,46 @@ namespace BrianSharp.Common
 {
     public class Helper : Program
     {
+        #region Menu
+        public static MenuItem AddItem(Menu SubMenu, string Item, string Display, string Key, KeyBindType Type = KeyBindType.Press, bool State = false)
+        {
+            return SubMenu.AddItem(new MenuItem("_" + SubMenu.Name + "_" + Item, Display, true).SetValue(new KeyBind(Key.ToCharArray()[0], Type, State)));
+        }
+
+        public static MenuItem AddItem(Menu SubMenu, string Item, string Display, bool State = true)
+        {
+            return SubMenu.AddItem(new MenuItem("_" + SubMenu.Name + "_" + Item, Display, true).SetValue(State));
+        }
+
+        public static MenuItem AddItem(Menu SubMenu, string Item, string Display, int Cur, int Min = 1, int Max = 100)
+        {
+            return SubMenu.AddItem(new MenuItem("_" + SubMenu.Name + "_" + Item, Display, true).SetValue(new Slider(Cur, Min, Max)));
+        }
+
+        public static MenuItem AddItem(Menu SubMenu, string Item, string Display, string[] Text, int DefaultIndex = 0)
+        {
+            return SubMenu.AddItem(new MenuItem("_" + SubMenu.Name + "_" + Item, Display, true).SetValue(new StringList(Text, DefaultIndex)));
+        }
+
+        public static bool ItemActive(string Item)
+        {
+            return MainMenu.Item("_OW_" + Item + "_Key", true).GetValue<KeyBind>().Active;
+        }
+
+        public static T GetValue<T>(string SubMenu, string Item)
+        {
+            return MainMenu.Item("_" + SubMenu + "_" + Item, true).GetValue<T>();
+        }
+
+        public static MenuItem GetItem(string SubMenu, string Item)
+        {
+            return MainMenu.Item("_" + SubMenu + "_" + Item, true);
+        }
+        #endregion
+
         public static bool PacketCast
         {
-            get { return ItemBool("Misc", "UsePacket"); }
+            get { return GetValue<bool>("Misc", "UsePacket"); }
         }
 
         public static void CustomOrbwalk(Obj_AI_Base Target)
@@ -58,7 +95,7 @@ namespace BrianSharp.Common
             InventorySlot Ward = null;
             int[] WardPink = { 3362, 2043 };
             int[] WardGreen = { 3340, 3361, 2049, 2045, 2044 };
-            if (ItemBool("Misc", "WJPink")) Ward = Player.InventoryItems.FirstOrDefault(i => i.Id == (ItemId)WardPink.FirstOrDefault(a => Items.CanUseItem(a)));
+            if (GetValue<bool>("Misc", "WJPink")) Ward = Player.InventoryItems.FirstOrDefault(i => i.Id == (ItemId)WardPink.FirstOrDefault(a => Items.CanUseItem(a)));
             foreach (var Id in WardGreen.Where(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.First(i => i.Id == (ItemId)Id);
             return Ward;
         }
@@ -72,21 +109,21 @@ namespace BrianSharp.Common
         public static bool CanSmiteMob(string Name)
         {
             if (!Smite.IsReady() || Name.Contains("Mini")) return false;
-            if (ItemBool("SmiteMob", "Baron") && Name.StartsWith("SRU_Baron")) return true;
-            if (ItemBool("SmiteMob", "Dragon") && Name.StartsWith("SRU_Dragon")) return true;
-            if (ItemBool("SmiteMob", "Red") && Name.StartsWith("SRU_Red")) return true;
-            if (ItemBool("SmiteMob", "Blue") && Name.StartsWith("SRU_Blue")) return true;
-            if (ItemBool("SmiteMob", "Krug") && Name.StartsWith("SRU_Krug")) return true;
-            if (ItemBool("SmiteMob", "Gromp") && Name.StartsWith("SRU_Gromp")) return true;
-            if (ItemBool("SmiteMob", "Raptor") && Name.StartsWith("SRU_Razorbeak")) return true;
-            if (ItemBool("SmiteMob", "Wolf") && Name.StartsWith("SRU_Murkwolf")) return true;
+            if (GetValue<bool>("SmiteMob", "Baron") && Name.StartsWith("SRU_Baron")) return true;
+            if (GetValue<bool>("SmiteMob", "Dragon") && Name.StartsWith("SRU_Dragon")) return true;
+            if (GetValue<bool>("SmiteMob", "Red") && Name.StartsWith("SRU_Red")) return true;
+            if (GetValue<bool>("SmiteMob", "Blue") && Name.StartsWith("SRU_Blue")) return true;
+            if (GetValue<bool>("SmiteMob", "Krug") && Name.StartsWith("SRU_Krug")) return true;
+            if (GetValue<bool>("SmiteMob", "Gromp") && Name.StartsWith("SRU_Gromp")) return true;
+            if (GetValue<bool>("SmiteMob", "Raptor") && Name.StartsWith("SRU_Razorbeak")) return true;
+            if (GetValue<bool>("SmiteMob", "Wolf") && Name.StartsWith("SRU_Murkwolf")) return true;
             return false;
         }
 
         public static void CastSkillShotSmite(Spell Skill, Obj_AI_Hero Target)
         {
             var Pred = Skill.GetPrediction(Target);
-            if (ItemBool("Misc", "SmiteCol") && Pred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(Pred.CollisionObjects.First()))
+            if (GetValue<bool>("Misc", "SmiteCol") && Pred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(Pred.CollisionObjects.First()))
             {
                 Q.Cast(Pred.CastPosition, PacketCast);
             }

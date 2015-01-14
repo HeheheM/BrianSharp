@@ -1,10 +1,10 @@
 ﻿using System;
-//using System.Collections.Generic;
 using System.Linq;
 
 using LeagueSharp;
 using LeagueSharp.Common;
 
+using BrianSharp.Common;
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp
@@ -17,7 +17,6 @@ namespace BrianSharp
         public static Items.Item Tiamat, Hydra, Youmuu, Sheen, Iceborn, Trinity;
         public static Menu MainMenu;
         public static String PlayerName;
-        public static Common.TargetSelector TS;
 
         private static void Main(string[] args)
         {
@@ -36,7 +35,7 @@ namespace BrianSharp
                 InfoMenu.AddItem(new MenuItem("Paypal", "Paypal: dcbrian01@gmail.com"));
                 MainMenu.AddSubMenu(InfoMenu);
             }
-            TS = new Common.TargetSelector(MainMenu);
+            TargetSelector.AddToMenu(MainMenu.AddSubMenu(new Menu("Target Selector", "TS")));
             Orbwalk.AddToMainMenu(MainMenu);
             try
             {
@@ -48,7 +47,7 @@ namespace BrianSharp
                     Sheen = ItemData.Sheen.GetItem();
                     Iceborn = ItemData.Iceborn_Gauntlet.GetItem();
                     Trinity = ItemData.Trinity_Force.GetItem();
-                    ItemBool(MainMenu.SubMenu(PlayerName + "Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
+                    Helper.AddItem(MainMenu.SubMenu(PlayerName + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
                     Flash = Player.GetSpellSlot("summonerflash");
                     foreach (var Spell in Player.Spellbook.Spells.Where(i => i.Name.ToLower().Contains("smite") && (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2))) Smite = Spell.Slot;
                     Ignite = Player.GetSpellSlot("summonerdot");
@@ -61,53 +60,6 @@ namespace BrianSharp
             }
             MainMenu.AddToMainMenu();
         }
-
-        #region CreateMenu
-        public static MenuItem ItemActive(Menu SubMenu, string Item, string Display, string Key, bool State = false)
-        {
-            return SubMenu.AddItem(new MenuItem(SubMenu.Name + Item, Display, true).SetValue(new KeyBind(Key.ToCharArray()[0], KeyBindType.Press, State)));
-        }
-
-        public static MenuItem ItemBool(Menu SubMenu, string Item, string Display, bool State = true)
-        {
-            return SubMenu.AddItem(new MenuItem(SubMenu.Name + Item, Display, true).SetValue(State));
-        }
-
-        public static MenuItem ItemSlider(Menu SubMenu, string Item, string Display, int Cur, int Min = 1, int Max = 100)
-        {
-            return SubMenu.AddItem(new MenuItem(SubMenu.Name + Item, Display, true).SetValue(new Slider(Cur, Min, Max)));
-        }
-
-        public static MenuItem ItemList(Menu SubMenu, string Item, string Display, string[] Text, int DefaultIndex = 0)
-        {
-            return SubMenu.AddItem(new MenuItem(SubMenu.Name + Item, Display, true).SetValue(new StringList(Text, DefaultIndex)));
-        }
-
-        public static bool ItemActive(string Item)
-        {
-            return MainMenu.SubMenu("OW").SubMenu("Mode").Item("OW" + Item, true).GetValue<KeyBind>().Active;
-        }
-
-        public static bool ItemActive(string SubMenu, string Item)
-        {
-            return MainMenu.SubMenu(PlayerName + "Plugin").Item(SubMenu + Item, true).GetValue<KeyBind>().Active;
-        }
-
-        public static bool ItemBool(string SubMenu, string Item)
-        {
-            return MainMenu.SubMenu(PlayerName + "Plugin").Item(SubMenu + Item, true).GetValue<bool>();
-        }
-
-        public static int ItemSlider(string SubMenu, string Item)
-        {
-            return MainMenu.SubMenu(PlayerName + "Plugin").Item(SubMenu + Item, true).GetValue<Slider>().Value;
-        }
-
-        public static int ItemList(string SubMenu, string Item)
-        {
-            return MainMenu.SubMenu(PlayerName + "Plugin").Item(SubMenu + Item, true).GetValue<StringList>().SelectedIndex;
-        }
-        #endregion
     }
 
     public class HTMLColor
