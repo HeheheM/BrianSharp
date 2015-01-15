@@ -71,6 +71,7 @@
   <ItemGroup>
     <Compile Include="Common\Helper.cs" />
     <Compile Include="Common\Orbwalker.cs" />
+    <Compile Include="Plugin\Aatrox.cs" />
     <Compile Include="Plugin\Lucian.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
