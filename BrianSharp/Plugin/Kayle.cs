@@ -62,7 +62,7 @@ namespace BrianSharp.Plugin
                     AddItem(ComboMenu, "EAoE", "-> Focus Most AoE Target");
                     AddItem(ComboMenu, "R", "Use R");
                     AddItem(ComboMenu, "RSave", "-> Save");
-                    AddItem(ComboMenu, "RAnti", "-> Anti Dangerous Ultimate", new[] { "Off", "Self", "Ally", "Both" }, 3);
+                    AddItem(ComboMenu, "RAnti", "-> Anti Dangerous Ultimate (WIP)", new[] { "Off", "Self", "Ally", "Both" }, 3);
                     AddItem(ComboMenu, "RAntiZed", "--> Zed");
                     AddItem(ComboMenu, "RAntiFizz", "--> Fizz");
                     AddItem(ComboMenu, "RAntiVlad", "--> Vladimir");
