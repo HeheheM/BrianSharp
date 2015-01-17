@@ -48,7 +48,6 @@ namespace BrianSharp.Plugin
                     AddItem(ComboMenu, "EModeDraw", "--> Draw Text", false);
                     AddItem(ComboMenu, "R", "Use R If Killable");
                     AddItem(ComboMenu, "RItem", "-> Use Youmuu For More Damage");
-                    AddItem(ComboMenu, "RCancel", "-> Stop R For Kill Steal");
                     ChampMenu.AddSubMenu(ComboMenu);
                 }
                 var HarassMenu = new Menu("Harass", "Harass");
@@ -78,10 +77,14 @@ namespace BrianSharp.Plugin
                 }
                 var MiscMenu = new Menu("Misc", "Misc");
                 {
-                    AddItem(MiscMenu, "Ks", "Kill Steal");
-                    AddItem(MiscMenu, "KsQ", "-> Use Q");
-                    AddItem(MiscMenu, "KsW", "-> Use W");
-                    AddItem(MiscMenu, "KsIgnite", "-> Use Ignite");
+                    var KillStealMenu = new Menu("Kill Steal", "KillSteal");
+                    {
+                        AddItem(KillStealMenu, "RStop", "Stop R For Kill Steal");
+                        AddItem(KillStealMenu, "Q", "Use Q");
+                        AddItem(KillStealMenu, "W", "Use W");
+                        AddItem(KillStealMenu, "Ignite", "Use Ignite");
+                        MiscMenu.AddSubMenu(KillStealMenu);
+                    }
                     AddItem(MiscMenu, "LockR", "Lock R On Target");
                     ChampMenu.AddSubMenu(MiscMenu);
                 }
@@ -110,7 +113,7 @@ namespace BrianSharp.Plugin
         private void OnGameUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling()) return;
-            if (GetValue<bool>("Misc", "Ks")) KillSteal();
+            KillSteal();
             if (Player.IsChannelingImportantSpell())
             {
                 LockROnTarget();
@@ -304,14 +307,14 @@ namespace BrianSharp.Plugin
 
         private void KillSteal()
         {
-            if (GetValue<bool>("Misc", "KsIgnite") && Ignite.IsReady())
+            if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
                 var Target = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.True);
                 if (Target != null && CastIgnite(Target)) return;
             }
-            if (Player.IsDashing() || ((!GetValue<bool>("Combo", "R") || (GetValue<bool>("Combo", "R") && !GetValue<bool>("Combo", "RCancel"))) && Player.IsChannelingImportantSpell())) return;
-            var CancelR = GetValue<bool>("Combo", "R") && GetValue<bool>("Combo", "RCancel") && Player.IsChannelingImportantSpell() && R.IsReady();
-            if (GetValue<bool>("Misc", "KsQ") && Q.IsReady())
+            if (Player.IsDashing() || (!GetValue<bool>("KillSteal", "RStop") && Player.IsChannelingImportantSpell())) return;
+            var CancelR = GetValue<bool>("KillSteal", "RStop") && Player.IsChannelingImportantSpell();
+            if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var Target = Q.GetTarget();
                 if (Target == null) Target = Q2.GetTarget();
@@ -324,7 +327,7 @@ namespace BrianSharp.Plugin
                     else if (CastExtendQ(Target, CancelR)) return;
                 }
             }
-            if (GetValue<bool>("Misc", "KsW") && W.IsReady())
+            if (GetValue<bool>("KillSteal", "W") && W.IsReady())
             {
                 var Target = W.GetTarget();
                 if (Target != null && CanKill(Target, W) && W.GetPrediction(Target).Hitchance >= HitChance.Medium)
@@ -336,7 +339,7 @@ namespace BrianSharp.Plugin
 
         private void LockROnTarget()
         {
-            if (GetValue<bool>("Misc", "LockR") && R.IsReady())
+            if (GetValue<bool>("Misc", "LockR"))
             {
                 var Target = RTarget.IsValidTarget() ? RTarget : R.GetTarget();
                 if (Target == null || REndPos == default(Vector3))

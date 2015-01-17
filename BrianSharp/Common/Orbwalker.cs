@@ -197,10 +197,10 @@ namespace BrianSharp.Common
             if (!sender.IsMe) return;
             if (Orbwalking.IsAutoAttackReset(args.SData.Name)) Utility.DelayAction.Add(250, ResetAutoAttack);
             if (!args.SData.IsAutoAttack()) return;
-            if (args.Target is Obj_AI_Base)
+            if (args.Target is AttackableUnit)
             {
                 LastAttack = Environment.TickCount - Game.Ping / 2;
-                var Target = (Obj_AI_Base)args.Target;
+                var Target = (AttackableUnit)args.Target;
                 if (Target.IsValid)
                 {
                     FireOnTargetSwitch(Target);
