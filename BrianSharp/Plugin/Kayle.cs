@@ -84,6 +84,19 @@ namespace BrianSharp.Plugin
                 }
                 var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
                 {
+                    var SmiteMob = new Menu("Smite Mob If Killable", "SmiteMob");
+                    {
+                        AddItem(SmiteMob, "Smite", "Use Smite");
+                        AddItem(SmiteMob, "Baron", "-> Baron Nashor");
+                        AddItem(SmiteMob, "Dragon", "-> Dragon");
+                        AddItem(SmiteMob, "Red", "-> Red Brambleback");
+                        AddItem(SmiteMob, "Blue", "-> Blue Sentinel");
+                        AddItem(SmiteMob, "Krug", "-> Ancient Krug");
+                        AddItem(SmiteMob, "Gromp", "-> Gromp");
+                        AddItem(SmiteMob, "Raptor", "-> Crimson Raptor");
+                        AddItem(SmiteMob, "Wolf", "-> Greater Murk Wolf");
+                        ClearMenu.AddSubMenu(SmiteMob);
+                    }
                     AddItem(ClearMenu, "Q", "Use Q");
                     AddItem(ClearMenu, "E", "Use E");
                     ChampMenu.AddSubMenu(ClearMenu);
@@ -187,6 +200,7 @@ namespace BrianSharp.Plugin
         {
             var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (minionObj.Count == 0) return;
+            if (GetValue<bool>("SmiteMob", "Smite") && minionObj.Any(i => i.Team == GameObjectTeam.Neutral && CanSmiteMob(i.Name) && CastSmite(i))) return;
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
                 var Obj = minionObj.Find(i => CanKill(i, Q));
