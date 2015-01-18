@@ -175,8 +175,8 @@ namespace BrianSharp.Plugin
                     }
                     else
                     {
-                        var Target = ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(R.Range));
-                        if (((Target.Count() >= 2 && Target.Count(i => CanKill(i, R)) >= 1) || Target.Count() >= GetValue<Slider>(Mode, "RCountA").Value || Target.Count(i => i.HealthPercentage() < GetValue<Slider>(Mode, "RHpU").Value) >= 2) && R.Cast(PacketCast)) return;
+                        var Target = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsValidTarget(R.Range));
+                        if (Target.Count > 0 && ((Target.Count >= 2 && Target.Count(i => CanKill(i, R)) >= 1) || Target.Count >= GetValue<Slider>(Mode, "RCountA").Value || Target.Count(i => i.HealthPercentage() < GetValue<Slider>(Mode, "RHpU").Value) >= 2) && R.Cast(PacketCast)) return;
                     }
                 }
             }
@@ -189,7 +189,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("SmiteMob", "Smite") && minionObj.Any(i => i.Team == GameObjectTeam.Neutral && CanSmiteMob(i.Name) && CastSmite(i))) return;
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var Pos = Q.GetCircularFarmLocation(minionObj.Where(i => Player.Distance(i, true) <= Q.RangeSqr + Q.WidthSqr / 2).ToList(), Q.Width - 30);
+                var Pos = Q.GetCircularFarmLocation(minionObj.FindAll(i => Player.Distance(i, true) <= Q.RangeSqr + Q.WidthSqr / 2), Q.Width - 30);
                 if (Pos.MinionsHit > 0 && Q.Cast(Pos.Position, PacketCast)) return;
             }
             if ((!GetValue<bool>("Clear", "Q") || (GetValue<bool>("Clear", "Q") && !Q.IsReady())) && GetValue<bool>("Clear", "E") && E.IsReady())

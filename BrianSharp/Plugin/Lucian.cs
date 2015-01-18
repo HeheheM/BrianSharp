@@ -39,7 +39,7 @@ namespace BrianSharp.Plugin
                     AddItem(ComboMenu, "Q", "Use Q");
                     AddItem(ComboMenu, "QExtend", "-> Extend");
                     AddItem(ComboMenu, "W", "Use W");
-                    AddItem(ComboMenu, "WPred", "-> Prediction");
+                    AddItem(ComboMenu, "WPred", "-> Prediction", false);
                     AddItem(ComboMenu, "E", "Use E");
                     AddItem(ComboMenu, "EGap", "-> Gap Closer");
                     AddItem(ComboMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 0, 1000);
@@ -211,7 +211,7 @@ namespace BrianSharp.Plugin
                 {
                     if ((Player.Distance(Target, true) > Math.Pow(800, 2) && Player.Distance(Target, true) <= Math.Pow(1075, 2)) || (!Orbwalk.InAutoAttackRange(Target) && Player.Distance(Target, true) <= Math.Pow(800, 2) && (!GetValue<bool>(Mode, "Q") || (GetValue<bool>(Mode, "Q") && !Q.IsReady())) && (!GetValue<bool>(Mode, "W") || (GetValue<bool>(Mode, "W") && !W.IsReady())) && (!GetValue<bool>(Mode, "E") || (GetValue<bool>(Mode, "E") && !E.IsReady()))))
                     {
-                        if (R.Cast(R.GetPrediction(Target).CastPosition, PacketCast))
+                        if (R.Cast(Target, PacketCast) == Spell.CastStates.SuccessfullyCasted)
                         {
                             RTarget = Target;
                             REndPos = (Player.ServerPosition - Target.ServerPosition).Normalized();
@@ -250,19 +250,9 @@ namespace BrianSharp.Plugin
                     var Target = W.GetTarget();
                     if (Target != null && ((Orbwalk.InAutoAttackRange(Target) && !HavePassive(Mode)) || (Player.Distance(Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, Target) + 40, 2))))
                     {
-                        if (Mode == "Harass" || (Mode == "Combo" && GetValue<bool>(Mode, "WPred")))
+                        if ((Mode == "Harass" || (Mode == "Combo" && GetValue<bool>(Mode, "WPred"))) && W.Cast(Target, PacketCast) == Spell.CastStates.SuccessfullyCasted)
                         {
-                            if (W.GetPrediction(Target).Hitchance >= HitChance.Medium)
-                            {
-                                if (W.Cast(W.GetPrediction(Target).CastPosition, PacketCast)) return;
-                            }
-                            else
-                            {
-                                foreach (var Obj in ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget() && !(i is Obj_AI_Turret) && i != Target && i.Distance(Target, true) <= W.WidthSqr * 2 && W.GetPrediction(i).Hitchance >= HitChance.Medium))
-                                {
-                                    if (W.Cast(W.GetPrediction(Obj).CastPosition, PacketCast)) return;
-                                }
-                            }
+                            return;
                         }
                         else if (Mode == "Combo" && !GetValue<bool>(Mode, "WPred") && W.Cast(W.GetPrediction(Target).CastPosition, PacketCast)) return;
                     }
@@ -273,21 +263,21 @@ namespace BrianSharp.Plugin
         private void LaneJungClear()
         {
             var minionObj = MinionManager.GetMinions(Q2.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-            if (minionObj.Count == 0 || Player.IsDashing()) return;
+            if (minionObj.Count == 0 || Player.IsDashing() || HavePassive()) return;
             if (!GetValue<bool>("Clear", "E") || (GetValue<bool>("Clear", "E") && !E.IsReady()))
             {
                 if (GetValue<bool>("Clear", "E") && E.IsReady(GetValue<Slider>("Clear", "EDelay").Value)) return;
-                if (GetValue<bool>("Clear", "W") && W.IsReady() && !HavePassive())
+                if (GetValue<bool>("Clear", "W") && W.IsReady())
                 {
-                    var Pos = W.GetLineFarmLocation(minionObj.Where(i => W.IsInRange(i)).ToList(), W.Width / 2);
+                    var Pos = W.GetLineFarmLocation(minionObj.FindAll(i => W.IsInRange(i)), W.Width / 2);
                     if (Pos.MinionsHit > 0 && W.Cast(Pos.Position, PacketCast)) return;
                 }
-                if ((!GetValue<bool>("Clear", "W") || (GetValue<bool>("Clear", "W") && !W.IsReady())) && GetValue<bool>("Clear", "Q") && Q.IsReady() && !HavePassive())
+                if ((!GetValue<bool>("Clear", "W") || (GetValue<bool>("Clear", "W") && !W.IsReady())) && GetValue<bool>("Clear", "Q") && Q.IsReady())
                 {
                     var Pos = Q2.GetLineFarmLocation(minionObj);
                     if (Pos.MinionsHit > 0)
                     {
-                        var Obj = minionObj.FirstOrDefault(i => Q.IsInRange(i) && Q2.WillHit(i.ServerPosition, Pos.Position.To3D().Extend(Player.ServerPosition, -Q2.Range), (int)(i.BoundingRadius / 4)));
+                        var Obj = minionObj.Find(i => Q.IsInRange(i) && Q2.WillHit(i.ServerPosition, Pos.Position.To3D().Extend(Player.ServerPosition, -Q2.Range), (int)(i.BoundingRadius / 4)));
                         if (Obj != null && Q.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted)
                         {
                             Utility.DelayAction.Add(300, () => Player.IssueOrder(GameObjectOrder.AttackUnit, Obj));
@@ -330,10 +320,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("KillSteal", "W") && W.IsReady())
             {
                 var Target = W.GetTarget();
-                if (Target != null && CanKill(Target, W) && W.GetPrediction(Target).Hitchance >= HitChance.Medium)
-                {
-                    if ((!CancelR || (CancelR && R.Cast(PacketCast))) && W.Cast(W.GetPrediction(Target).CastPosition, PacketCast)) return;
-                }
+                if (Target != null && CanKill(Target, W) && (!CancelR || (CancelR && R.Cast(PacketCast))) && W.Cast(Target, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
             }
         }
 
@@ -370,13 +357,8 @@ namespace BrianSharp.Plugin
 
         private bool CastExtendQ(Obj_AI_Hero Target, bool CancelR = false)
         {
-            foreach (var Obj in MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly))
-            {
-                if (Q2.WillHit(Target.ServerPosition, Obj.ServerPosition.Extend(Player.ServerPosition, -Q2.Range), (int)(Target.BoundingRadius / 4)))
-                {
-                    if ((!CancelR || (CancelR && R.Cast(PacketCast))) && Q.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return true;
-                }
-            }
+            var Obj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Find(i => Q2.WillHit(Target.ServerPosition, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range), (int)(Target.BoundingRadius / 4)));
+            if (Obj != null && (!CancelR || (CancelR && R.Cast(PacketCast))) && Q.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return true;
             return false;
         }
 

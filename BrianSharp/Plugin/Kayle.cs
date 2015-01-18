@@ -15,8 +15,13 @@ namespace BrianSharp.Plugin
     {
         private class RAntiItem
         {
-            public float EndTick;
             public float StartTick;
+            public float EndTick;
+            public RAntiItem(BuffInstance Buff)
+            {
+                StartTick = Game.Time + (Buff.EndTime - Buff.StartTime) - (R.Level * 0.5f + 1);
+                EndTick = Game.Time + (Buff.EndTime - Buff.StartTime);
+            }
         }
         private Dictionary<int, RAntiItem> RAntiDetected = new Dictionary<int, RAntiItem>();
 
@@ -62,7 +67,7 @@ namespace BrianSharp.Plugin
                     AddItem(ComboMenu, "EAoE", "-> Focus Most AoE Target");
                     AddItem(ComboMenu, "R", "Use R");
                     AddItem(ComboMenu, "RSave", "-> Save");
-                    AddItem(ComboMenu, "RAnti", "-> Anti Dangerous Ultimate (WIP)", new[] { "Off", "Self", "Ally", "Both" }, 3);
+                    AddItem(ComboMenu, "RAnti", "-> Anti Dangerous Ultimate", new[] { "Off", "Self", "Ally", "Both" }, 3);
                     AddItem(ComboMenu, "RAntiZed", "--> Zed");
                     AddItem(ComboMenu, "RAntiFizz", "--> Fizz");
                     AddItem(ComboMenu, "RAntiVlad", "--> Vladimir");
@@ -114,11 +119,8 @@ namespace BrianSharp.Plugin
 
         private void OnGameUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
-            {
-                if (!Player.IsDead) AntiDetect();
-                return;
-            }
+            AntiDetect();
+            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling()) return;
             if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
             {
                 NormalCombo(Orbwalk.CurrentMode.ToString());
@@ -144,7 +146,7 @@ namespace BrianSharp.Plugin
         {
             if (Mode == "Combo" && GetValue<bool>(Mode, "E") && GetValue<bool>(Mode, "EAoE") && Player.HasBuff("JudicatorRighteousFury"))
             {
-                var Target = ObjectManager.Get<Obj_AI_Hero>().Where(i => Orbwalk.InAutoAttackRange(i)).MaxOrDefault(i => i.CountEnemysInRange(150));
+                var Target = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => Orbwalk.InAutoAttackRange(i)).MaxOrDefault(i => i.CountEnemysInRange(150));
                 if (Target != null) Orbwalk.ForcedTarget = Target;
             }
             else Orbwalk.ForcedTarget = null;
@@ -156,11 +158,8 @@ namespace BrianSharp.Plugin
                 {
                     if (GetValue<bool>(Mode, "WHeal"))
                     {
-                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(W.Range, false) && i.IsAlly && !i.InFountain() && !i.IsRecalling() && i.CountEnemysInRange(W.Range) >= 1 && !i.HasBuff("JudicatorIntervention") && !i.HasBuff("Undying Rage")).OrderBy(i => i.Health))
-                        {
-                            var Name = Obj.IsMe ? "Self" : Obj.ChampionName;
-                            if (GetValue<bool>("Heal", Name) && Obj.HealthPercentage() < GetValue<Slider>("Heal", Name + "HpU").Value && W.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
-                        }
+                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsValidTarget(W.Range, false) && i.IsAlly && GetValue<bool>("Heal", MenuName(i)) && i.HealthPercentage() < GetValue<Slider>("Heal", MenuName(i) + "HpU").Value && !i.InFountain() && !i.IsRecalling() && i.CountEnemysInRange(W.Range) >= 1 && !i.HasBuff("JudicatorIntervention") && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
+                        if (Obj != null && W.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
                     }
                     if (GetValue<bool>(Mode, "WSpeed"))
                     {
@@ -172,19 +171,13 @@ namespace BrianSharp.Plugin
                 {
                     if (GetValue<bool>(Mode, "RSave"))
                     {
-                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(R.Range, false) && i.IsAlly && !i.InFountain() && !i.IsRecalling() && i.CountEnemysInRange(W.Range) >= 1 && !i.HasBuff("Undying Rage")).OrderBy(i => i.Health))
-                        {
-                            var Name = Obj.IsMe ? "Self" : Obj.ChampionName;
-                            if (GetValue<bool>("Save", Name) && Obj.HealthPercentage() < GetValue<Slider>("Save", Name + "HpU").Value && R.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
-                        }
+                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsValidTarget(R.Range, false) && i.IsAlly && GetValue<bool>("Save", MenuName(i)) && i.HealthPercentage() < GetValue<Slider>("Save", MenuName(i) + "HpU").Value && !i.InFountain() && !i.IsRecalling() && i.CountEnemysInRange(W.Range) >= 1 && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
+                        if (Obj != null && R.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
                     }
-                    if (GetValue<StringList>("Combo", "RAnti").SelectedIndex > 0)
+                    if (GetValue<StringList>(Mode, "RAnti").SelectedIndex > 0)
                     {
-                        //foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(R.Range, false) && i.IsAlly && RAntiDetected.ContainsKey(i.NetworkId) && !i.HasBuff("Undying Rage")).OrderBy(i => i.Health))
-                        //{
-                        //    var Name = (Obj.IsMe) ? "Self" : Obj.ChampionName;
-                        //    if (GetValue<bool>("Save", Name) && Game.Time > RAntiDetected[Obj.NetworkId].StartTick && R.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
-                        //}
+                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsValidTarget(R.Range, false) && i.IsAlly && RAntiDetected.ContainsKey(i.NetworkId) && Game.Time > RAntiDetected[i.NetworkId].StartTick && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
+                        if (Obj != null && R.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
                     }
                 }
             }
@@ -196,8 +189,8 @@ namespace BrianSharp.Plugin
             if (minionObj.Count == 0) return;
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var Obj = minionObj.FirstOrDefault(i => CanKill(i, Q));
-                if (Obj == null) Obj = minionObj.FirstOrDefault(i => i.MaxHealth >= 1200);
+                var Obj = minionObj.Find(i => CanKill(i, Q));
+                if (Obj == null) Obj = minionObj.Find(i => i.MaxHealth >= 1200);
                 if (Obj != null && Q.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
             }
             if (GetValue<bool>("Clear", "E") && E.IsReady() && (minionObj.Count >= 2 || minionObj.Count(i => i.MaxHealth >= 1200) >= 1) && E.Cast(PacketCast)) return;
@@ -230,30 +223,31 @@ namespace BrianSharp.Plugin
 
         private void AntiDetect()
         {
-            if (GetValue<StringList>("Combo", "RAnti").SelectedIndex == 0 || R.Level == 0) return;
-            //foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(float.MaxValue, false) && i.IsAlly))
-            //{
-            //    if (RAntiDetected.ContainsKey(Obj.NetworkId) && Game.Time > RAntiDetected[Obj.NetworkId].EndTick) RAntiDetected.Remove(Obj.NetworkId);
-            //}
-            //foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(float.MaxValue, false) && i.IsAlly))
-            //{
-            //    if ((GetValue<StringList>("Combo", "RAnti").SelectedIndex == 1 && !Obj.IsMe) || (GetValue<StringList>("Combo", "RAnti").SelectedIndex == 2 && Obj.IsMe)) break;
-            //    foreach (var Buff in Obj.Buffs)
-            //    {
-            //        if ((Buff.Name == "zedultexecute" && GetValue<bool>("Combo", "RAntiZed")) || (Buff.Name == "vladimirhemoplaguedebuff" && GetValue<bool>("Combo", "RAntiVlad")) || (Buff.Name == "fizzmarinerdoombomb" && GetValue<bool>("Combo", "RAntiFizz")))
-            //        {
-            //            if (!RAntiDetected.ContainsKey(Obj.NetworkId)) RAntiDetected.Add(Obj.NetworkId, new RAntiItem());
-            //            RAntiDetected[Obj.NetworkId].StartTick = Game.Time + (Buff.EndTime - Buff.StartTime) - (R.Level * 0.5f + 1);
-            //            RAntiDetected[Obj.NetworkId].EndTick = Game.Time + (Buff.EndTime - Buff.StartTime);
-            //        }
-            //        else if (Buff.Name == "karthusfallenonetarget" && GetValue<bool>("Combo", "RAntiKarthus") && Obj.Health <= ((Obj_AI_Hero)Buff.Caster).GetSpellDamage(Obj, SpellSlot.R) + Obj.Health * 0.2f && Obj.CountEnemysInRange(800) >= 1)
-            //        {
-            //            if (!RAntiDetected.ContainsKey(Obj.NetworkId)) RAntiDetected.Add(Obj.NetworkId, new RAntiItem());
-            //            RAntiDetected[Obj.NetworkId].StartTick = Game.Time + (Buff.EndTime - Buff.StartTime) - (R.Level * 0.5f + 1);
-            //            RAntiDetected[Obj.NetworkId].EndTick = Game.Time + (Buff.EndTime - Buff.StartTime);
-            //        }
-            //    }
-            //}
+            if (Player.IsDead || GetValue<StringList>("Combo", "RAnti").SelectedIndex == 0 || R.Level == 0) return;
+            var Key = ObjectManager.Get<Obj_AI_Hero>().Find(i => i.IsValidTarget(float.MaxValue, false) && i.IsAlly && RAntiDetected.ContainsKey(i.NetworkId) && Game.Time > RAntiDetected[i.NetworkId].EndTick);
+            if (Key != null) RAntiDetected.Remove(Key.NetworkId);
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(float.MaxValue, false) && i.IsAlly))
+            {
+                if ((GetValue<StringList>("Combo", "RAnti").SelectedIndex == 1 && Obj.IsMe) || (GetValue<StringList>("Combo", "RAnti").SelectedIndex == 2 && !Obj.IsMe) || GetValue<StringList>("Combo", "RAnti").SelectedIndex == 3)
+                {
+                    foreach (var Buff in Obj.Buffs)
+                    {
+                        if ((Buff.DisplayName == "ZedUltExecute" && GetValue<bool>("Combo", "RAntiZed")) || (Buff.DisplayName == "FizzChurnTheWatersCling" && GetValue<bool>("Combo", "RAntiFizz")) || (Buff.DisplayName == "VladimirHemoplagueDebuff" && GetValue<bool>("Combo", "RAntiVlad")))
+                        {
+                            if (!RAntiDetected.ContainsKey(Obj.NetworkId)) RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
+                        }
+                        else if (Buff.DisplayName == "KarthusFallenOne" && GetValue<bool>("Combo", "RAntiKarthus") && Obj.Health <= ((Obj_AI_Hero)Buff.Caster).GetSpellDamage(Obj, SpellSlot.R) + Obj.Health * 0.2f && Obj.CountEnemysInRange(R.Range) >= 1)
+                        {
+                            if (!RAntiDetected.ContainsKey(Obj.NetworkId)) RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
+                        }
+                    }
+                }
+            }
+        }
+
+        private string MenuName(Obj_AI_Hero Obj)
+        {
+            return Obj.IsMe ? "Self" : Obj.ChampionName;
         }
     }
 }

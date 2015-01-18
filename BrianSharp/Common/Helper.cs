@@ -95,8 +95,8 @@ namespace BrianSharp.Common
             InventorySlot Ward = null;
             int[] WardPink = { 3362, 2043 };
             int[] WardGreen = { 3340, 3361, 2049, 2045, 2044 };
-            if (GetValue<bool>("Misc", "WJPink")) Ward = Player.InventoryItems.FirstOrDefault(i => i.Id == (ItemId)WardPink.FirstOrDefault(a => Items.CanUseItem(a)));
-            foreach (var Id in WardGreen.Where(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.First(i => i.Id == (ItemId)Id);
+            if (GetValue<bool>("Misc", "WJPink") && WardPink.Any(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.Find(i => i.Id == (ItemId)WardPink.Find(a => Items.CanUseItem(a)));
+            if (WardGreen.Any(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.Find(i => i.Id == (ItemId)WardGreen.Find(a => Items.CanUseItem(a)));
             return Ward;
         }
 
