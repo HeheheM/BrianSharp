@@ -135,9 +135,9 @@ namespace BrianSharp.Common
                 MovePrediction.SetTargetted(Player.BasicAttack.SpellCastTime, Player.BasicAttack.MissileSpeed);
                 Game.OnGameUpdate += OnGameUpdate;
                 Drawing.OnDraw += OnDraw;
-                Obj_AI_Hero.OnInstantStopAttack += OnInstantStopAttack;
                 Obj_AI_Hero.OnProcessSpellCast += OnProcessSpellCast;
                 GameObject.OnCreate += OnCreateObjMissile;
+                Spellbook.OnStopCast += OnStopCast;
                 Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>Orbwalker</font>: <font color = \'{2}'>Loaded !</font>", HTMLColor.BlueViolet, HTMLColor.Gold, HTMLColor.Cyan);
             }
             catch
@@ -186,12 +186,6 @@ namespace BrianSharp.Common
             }
         }
 
-        private static void OnInstantStopAttack(Obj_AI_Base sender, GameObjectInstantStopAttackEventArgs args)
-        {
-            if (!sender.IsMe) return;
-            if ((args.BitData & 1) == 0 && ((args.BitData >> 4) & 1) == 1) ResetAutoAttack();
-        }
-
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             if (!sender.IsMe) return;
@@ -222,6 +216,12 @@ namespace BrianSharp.Common
                 FireAfterAttack(LastTarget);
                 LastRealAttack = Environment.TickCount;
             }
+        }
+
+        private static void OnStopCast(Spellbook sender, SpellbookStopCastEventArgs args)
+        {
+            if (!sender.Owner.IsMe) return;
+            //ResetAutoAttack();
         }
 
         private static void MoveTo(Vector3 Pos)

@@ -59,6 +59,14 @@ namespace BrianSharp.Plugin
                         }
                         ComboMenu.AddSubMenu(SaveMenu);
                     }
+                    var AntiMenu = new Menu("Anti (R)", "Anti");
+                    {
+                        AddItem(AntiMenu, "Zed", "Zed");
+                        AddItem(AntiMenu, "Fizz", "Fizz");
+                        AddItem(AntiMenu, "Vlad", "Vladimir");
+                        AddItem(AntiMenu, "Karthus", "Karthus");
+                        ComboMenu.AddSubMenu(AntiMenu);
+                    }
                     AddItem(ComboMenu, "Q", "Use Q");
                     AddItem(ComboMenu, "W", "Use W");
                     AddItem(ComboMenu, "WSpeed", "-> Speed");
@@ -68,10 +76,6 @@ namespace BrianSharp.Plugin
                     AddItem(ComboMenu, "R", "Use R");
                     AddItem(ComboMenu, "RSave", "-> Save");
                     AddItem(ComboMenu, "RAnti", "-> Anti Dangerous Ultimate", new[] { "Off", "Self", "Ally", "Both" }, 3);
-                    AddItem(ComboMenu, "RAntiZed", "--> Zed");
-                    AddItem(ComboMenu, "RAntiFizz", "--> Fizz");
-                    AddItem(ComboMenu, "RAntiVlad", "--> Vladimir");
-                    AddItem(ComboMenu, "RAntiKarthus", "--> Karthus");
                     ChampMenu.AddSubMenu(ComboMenu);
                 }
                 var HarassMenu = new Menu("Harass", "Harass");
@@ -240,20 +244,17 @@ namespace BrianSharp.Plugin
             if (Player.IsDead || GetValue<StringList>("Combo", "RAnti").SelectedIndex == 0 || R.Level == 0) return;
             var Key = ObjectManager.Get<Obj_AI_Hero>().Find(i => i.IsValidTarget(float.MaxValue, false) && i.IsAlly && RAntiDetected.ContainsKey(i.NetworkId) && Game.Time > RAntiDetected[i.NetworkId].EndTick);
             if (Key != null) RAntiDetected.Remove(Key.NetworkId);
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(float.MaxValue, false) && i.IsAlly))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(float.MaxValue, false) && i.IsAlly && !RAntiDetected.ContainsKey(i.NetworkId)))
             {
                 if ((GetValue<StringList>("Combo", "RAnti").SelectedIndex == 1 && Obj.IsMe) || (GetValue<StringList>("Combo", "RAnti").SelectedIndex == 2 && !Obj.IsMe) || GetValue<StringList>("Combo", "RAnti").SelectedIndex == 3)
                 {
                     foreach (var Buff in Obj.Buffs)
                     {
-                        if ((Buff.DisplayName == "ZedUltExecute" && GetValue<bool>("Combo", "RAntiZed")) || (Buff.DisplayName == "FizzChurnTheWatersCling" && GetValue<bool>("Combo", "RAntiFizz")) || (Buff.DisplayName == "VladimirHemoplagueDebuff" && GetValue<bool>("Combo", "RAntiVlad")))
+                        if ((Buff.DisplayName == "ZedUltExecute" && GetValue<bool>("Anti", "Zed")) || (Buff.DisplayName == "FizzChurnTheWatersCling" && GetValue<bool>("Anti", "Fizz")) || (Buff.DisplayName == "VladimirHemoplagueDebuff" && GetValue<bool>("Anti", "Vlad")))
                         {
-                            if (!RAntiDetected.ContainsKey(Obj.NetworkId)) RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
+                            RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
                         }
-                        else if (Buff.DisplayName == "KarthusFallenOne" && GetValue<bool>("Combo", "RAntiKarthus") && Obj.Health <= ((Obj_AI_Hero)Buff.Caster).GetSpellDamage(Obj, SpellSlot.R) + Obj.Health * 0.2f && Obj.CountEnemysInRange(R.Range) >= 1)
-                        {
-                            if (!RAntiDetected.ContainsKey(Obj.NetworkId)) RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
-                        }
+                        else if (Buff.DisplayName == "KarthusFallenOne" && GetValue<bool>("Anti", "Karthus") && Obj.Health <= ((Obj_AI_Hero)Buff.Caster).GetSpellDamage(Obj, SpellSlot.R) + Obj.Health * 0.2f && Obj.CountEnemysInRange(R.Range) >= 1) RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
                     }
                 }
             }
