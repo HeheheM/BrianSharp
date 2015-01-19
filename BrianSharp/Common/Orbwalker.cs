@@ -221,7 +221,7 @@ namespace BrianSharp.Common
         private static void OnStopCast(Spellbook sender, SpellbookStopCastEventArgs args)
         {
             if (!sender.Owner.IsMe) return;
-            //ResetAutoAttack();
+            if (args.DestroyMissile && args.StopAnimation) ResetAutoAttack();
         }
 
         private static void MoveTo(Vector3 Pos)
