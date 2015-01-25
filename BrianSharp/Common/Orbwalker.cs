@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Collections.Generic;
 using Color = System.Drawing.Color;
 
 using LeagueSharp;
@@ -8,7 +9,7 @@ using SharpDX;
 
 namespace BrianSharp.Common
 {
-    public class Orbwalker
+    class Orbwalker
     {
         private static Menu Config;
         private static readonly Obj_AI_Hero Player = ObjectManager.Player;
@@ -34,6 +35,7 @@ namespace BrianSharp.Common
         private static AttackableUnit LastTarget;
         private static Spell MovePrediction;
         private static readonly Random RandomPos = new Random(DateTime.Now.Millisecond);
+        private static readonly Dictionary<string, string[]> NoInterruptSpells = new Dictionary<string, string[]>() { { "Varus", new[] { "VarusQ" } }, { "Lucian", new[] { "LucianR" } } };
         public class BeforeAttackEventArgs
         {
             public AttackableUnit Target;
@@ -61,96 +63,89 @@ namespace BrianSharp.Common
 
         public static void AddToMainMenu(Menu MainMenu)
         {
-            try
+            Config = MainMenu;
+            var OWMenu = new Menu("Orbwalker", "OW");
             {
-                Config = MainMenu;
-                var OWMenu = new Menu("Orbwalker", "OW");
+                var DrawMenu = new Menu("Draw", "Draw");
                 {
-                    var DrawMenu = new Menu("Draw", "Draw");
-                    {
-                        DrawMenu.AddItem(new MenuItem("OW_Draw_AARange", "Player AA Circle").SetValue(new Circle(false, Color.FloralWhite)));
-                        DrawMenu.AddItem(new MenuItem("OW_Draw_AARangeEnemy", "Enemy AA Circle").SetValue(new Circle(false, Color.Pink)));
-                        DrawMenu.AddItem(new MenuItem("OW_Draw_HoldZone", "Hold Zone").SetValue(new Circle(false, Color.FloralWhite)));
-                        DrawMenu.AddItem(new MenuItem("OW_Draw_HpBar", "Minion Hp Bar").SetValue(new Circle(false, Color.Black)));
-                        DrawMenu.AddItem(new MenuItem("OW_Draw_HpBarThickness", "-> Line Thickness").SetValue(new Slider(1, 1, 3)));
-                        DrawMenu.AddItem(new MenuItem("OW_Draw_LastHit", "Minion Last Hit").SetValue(new Circle(false, Color.Lime)));
-                        DrawMenu.AddItem(new MenuItem("OW_Draw_NearKill", "Minion Near Kill").SetValue(new Circle(false, Color.Gold)));
-                        OWMenu.AddSubMenu(DrawMenu);
-                    }
-                    var MiscMenu = new Menu("Misc", "Misc");
-                    {
-                        MiscMenu.AddItem(new MenuItem("OW_Misc_HoldZone", "Hold Zone").SetValue(new Slider(50, 0, 150)));
-                        MiscMenu.AddItem(new MenuItem("OW_Misc_FarmDelay", "Farm Delay").SetValue(new Slider(0, 0, 200)));
-                        MiscMenu.AddItem(new MenuItem("OW_Misc_MoveDelay", "Movement Delay").SetValue(new Slider(80, 0, 150)));
-                        MiscMenu.AddItem(new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(80, 0, 200)));
-                        MiscMenu.AddItem(new MenuItem("OW_Misc_AutoWindUp", "-> Auto WindUp").SetValue(true));
-                        MiscMenu.AddItem(new MenuItem("OW_Misc_PriorityUnit", "Priority Unit").SetValue(new StringList(new[] { "Minion", "Hero" })));
-                        MiscMenu.AddItem(new MenuItem("OW_Misc_MeleeMagnet", "Melee Movement Magnet").SetValue(true));
-                        MiscMenu.AddItem(new MenuItem("OW_Misc_AllMovementDisabled", "Disable All Movement").SetValue(false));
-                        MiscMenu.AddItem(new MenuItem("OW_Misc_AllAttackDisabled", "Disable All Attack").SetValue(false));
-                        OWMenu.AddSubMenu(MiscMenu);
-                    }
-                    var ModeMenu = new Menu("Mode", "Mode");
-                    {
-                        var ComboMenu = new Menu("Combo", "OW_Combo");
-                        {
-                            ComboMenu.AddItem(new MenuItem("OW_Combo_Key", "Key").SetValue(new KeyBind(32, KeyBindType.Press)));
-                            ComboMenu.AddItem(new MenuItem("OW_Combo_Move", "Movement").SetValue(true));
-                            ComboMenu.AddItem(new MenuItem("OW_Combo_Attack", "Attack").SetValue(true));
-                            ModeMenu.AddSubMenu(ComboMenu);
-                        }
-                        var HarassMenu = new Menu("Harass", "OW_Harass");
-                        {
-                            HarassMenu.AddItem(new MenuItem("OW_Harass_Key", "Key").SetValue(new KeyBind("V".ToCharArray()[0], KeyBindType.Press)));
-                            HarassMenu.AddItem(new MenuItem("OW_Harass_Move", "Movement").SetValue(true));
-                            HarassMenu.AddItem(new MenuItem("OW_Harass_Attack", "Attack").SetValue(true));
-                            HarassMenu.AddItem(new MenuItem("OW_Harass_LastHit", "Last Hit Minion").SetValue(true));
-                            ModeMenu.AddSubMenu(HarassMenu);
-                        }
-                        var ClearMenu = new Menu("Lane/Jungle Clear", "OW_Clear");
-                        {
-                            ClearMenu.AddItem(new MenuItem("OW_Clear_Key", "Key").SetValue(new KeyBind("G".ToCharArray()[0], KeyBindType.Press)));
-                            ClearMenu.AddItem(new MenuItem("OW_Clear_Move", "Movement").SetValue(true));
-                            ClearMenu.AddItem(new MenuItem("OW_Clear_Attack", "Attack").SetValue(true));
-                            ModeMenu.AddSubMenu(ClearMenu);
-                        }
-                        var LastHitMenu = new Menu("Last Hit", "OW_LastHit");
-                        {
-                            LastHitMenu.AddItem(new MenuItem("OW_LastHit_Key", "Key").SetValue(new KeyBind(17, KeyBindType.Press)));
-                            LastHitMenu.AddItem(new MenuItem("OW_LastHit_Move", "Movement").SetValue(true));
-                            LastHitMenu.AddItem(new MenuItem("OW_LastHit_Attack", "Attack").SetValue(true));
-                            ModeMenu.AddSubMenu(LastHitMenu);
-                        }
-                        var FleeMenu = new Menu("Flee", "OW_Flee");
-                        {
-                            FleeMenu.AddItem(new MenuItem("OW_Flee_Key", "Key").SetValue(new KeyBind("C".ToCharArray()[0], KeyBindType.Press)));
-                            ModeMenu.AddSubMenu(FleeMenu);
-                        }
-                        OWMenu.AddSubMenu(ModeMenu);
-                    }
-                    OWMenu.AddItem(new MenuItem("OW_Info", "Credits: xSLx"));
-                    Config.AddSubMenu(OWMenu);
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_AARange", "Player AA Circle").SetValue(new Circle(false, Color.FloralWhite)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_AARangeEnemy", "Enemy AA Circle").SetValue(new Circle(false, Color.Pink)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_HoldZone", "Hold Zone").SetValue(new Circle(false, Color.FloralWhite)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_HpBar", "Minion Hp Bar").SetValue(new Circle(false, Color.Black)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_HpBarThickness", "-> Line Thickness").SetValue(new Slider(1, 1, 3)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_LastHit", "Minion Last Hit").SetValue(new Circle(false, Color.Lime)));
+                    DrawMenu.AddItem(new MenuItem("OW_Draw_NearKill", "Minion Near Kill").SetValue(new Circle(false, Color.Gold)));
+                    OWMenu.AddSubMenu(DrawMenu);
                 }
-                MovePrediction = new Spell(SpellSlot.Unknown, GetAutoAttackRange());
-                MovePrediction.SetTargetted(Player.BasicAttack.SpellCastTime, Player.BasicAttack.MissileSpeed);
-                Game.OnGameUpdate += OnGameUpdate;
-                Drawing.OnDraw += OnDraw;
-                Obj_AI_Hero.OnProcessSpellCast += OnProcessSpellCast;
-                GameObject.OnCreate += OnCreateObjMissile;
-                Spellbook.OnStopCast += OnStopCast;
-                Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>Orbwalker</font>: <font color = \'{2}'>Loaded !</font>", HTMLColor.BlueViolet, HTMLColor.Gold, HTMLColor.Cyan);
+                var MiscMenu = new Menu("Misc", "Misc");
+                {
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_HoldZone", "Hold Zone").SetValue(new Slider(50, 0, 150)));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_FarmDelay", "Farm Delay").SetValue(new Slider(0, 0, 300)));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_MoveDelay", "Movement Delay").SetValue(new Slider(0, 0, 150)));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(80, 0, 200)));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_AutoWindUp", "-> Auto WindUp").SetValue(true));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_PriorityUnit", "Priority Unit").SetValue(new StringList(new[] { "Minion", "Hero" })));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_MeleeMagnet", "Melee Movement Magnet").SetValue(true));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_AllMovementDisabled", "Disable All Movement").SetValue(false));
+                    MiscMenu.AddItem(new MenuItem("OW_Misc_AllAttackDisabled", "Disable All Attack").SetValue(false));
+                    OWMenu.AddSubMenu(MiscMenu);
+                }
+                var ModeMenu = new Menu("Mode", "Mode");
+                {
+                    var ComboMenu = new Menu("Combo", "OW_Combo");
+                    {
+                        ComboMenu.AddItem(new MenuItem("OW_Combo_Key", "Key").SetValue(new KeyBind(32, KeyBindType.Press)));
+                        ComboMenu.AddItem(new MenuItem("OW_Combo_Move", "Movement").SetValue(true));
+                        ComboMenu.AddItem(new MenuItem("OW_Combo_Attack", "Attack").SetValue(true));
+                        ModeMenu.AddSubMenu(ComboMenu);
+                    }
+                    var HarassMenu = new Menu("Harass", "OW_Harass");
+                    {
+                        HarassMenu.AddItem(new MenuItem("OW_Harass_Key", "Key").SetValue(new KeyBind("V".ToCharArray()[0], KeyBindType.Press)));
+                        HarassMenu.AddItem(new MenuItem("OW_Harass_Move", "Movement").SetValue(true));
+                        HarassMenu.AddItem(new MenuItem("OW_Harass_Attack", "Attack").SetValue(true));
+                        HarassMenu.AddItem(new MenuItem("OW_Harass_LastHit", "Last Hit Minion").SetValue(true));
+                        ModeMenu.AddSubMenu(HarassMenu);
+                    }
+                    var ClearMenu = new Menu("Lane/Jungle Clear", "OW_Clear");
+                    {
+                        ClearMenu.AddItem(new MenuItem("OW_Clear_Key", "Key").SetValue(new KeyBind("G".ToCharArray()[0], KeyBindType.Press)));
+                        ClearMenu.AddItem(new MenuItem("OW_Clear_Move", "Movement").SetValue(true));
+                        ClearMenu.AddItem(new MenuItem("OW_Clear_Attack", "Attack").SetValue(true));
+                        ModeMenu.AddSubMenu(ClearMenu);
+                    }
+                    var LastHitMenu = new Menu("Last Hit", "OW_LastHit");
+                    {
+                        LastHitMenu.AddItem(new MenuItem("OW_LastHit_Key", "Key").SetValue(new KeyBind(17, KeyBindType.Press)));
+                        LastHitMenu.AddItem(new MenuItem("OW_LastHit_Move", "Movement").SetValue(true));
+                        LastHitMenu.AddItem(new MenuItem("OW_LastHit_Attack", "Attack").SetValue(true));
+                        ModeMenu.AddSubMenu(LastHitMenu);
+                    }
+                    var FleeMenu = new Menu("Flee", "OW_Flee");
+                    {
+                        FleeMenu.AddItem(new MenuItem("OW_Flee_Key", "Key").SetValue(new KeyBind("C".ToCharArray()[0], KeyBindType.Press)));
+                        ModeMenu.AddSubMenu(FleeMenu);
+                    }
+                    OWMenu.AddSubMenu(ModeMenu);
+                }
+                OWMenu.AddItem(new MenuItem("OW_Info", "Credits: xSLx"));
+                Config.AddSubMenu(OWMenu);
             }
-            catch
-            {
-                Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>Orbwalker</font>: <font color = \'{2}'>Can't Load !</font>", HTMLColor.BlueViolet, HTMLColor.Gold, HTMLColor.Cyan);
-            }
+            MovePrediction = new Spell(SpellSlot.Unknown, GetAutoAttackRange());
+            MovePrediction.SetTargetted(Player.BasicAttack.SpellCastTime, Player.BasicAttack.MissileSpeed);
+            Game.OnGameUpdate += OnGameUpdate;
+            Drawing.OnDraw += OnDraw;
+            Obj_AI_Hero.OnProcessSpellCast += OnProcessSpellCast;
+            GameObject.OnCreate += OnCreateObjMissile;
+            Spellbook.OnStopCast += OnStopCast;
         }
 
         private static void OnGameUpdate(EventArgs args)
         {
-            if (Player.IsDead || CurrentMode == Mode.None || MenuGUI.IsChatOpen || Player.IsChannelingImportantSpell() || Player.IsRecalling()) return;
             CheckAutoWindUp();
-            Orbwalk(Game.CursorPos, CurrentMode == Mode.Flee ? null : GetPossibleTarget());
+            if (Player.IsDead || CurrentMode == Mode.None || MenuGUI.IsChatOpen || Player.IsRecalling()) return;
+            if (Player.IsChannelingImportantSpell() && (!NoInterruptSpells.ContainsKey(Player.ChampionName) || !NoInterruptSpells[Player.ChampionName].Contains(Player.LastCastedSpellName()))) return;
+            Orbwalk(CurrentMode == Mode.Flee ? null : GetPossibleTarget());
         }
 
         private static void OnDraw(EventArgs args)
@@ -190,7 +185,7 @@ namespace BrianSharp.Common
         {
             if (!sender.IsMe) return;
             if (Orbwalking.IsAutoAttackReset(args.SData.Name)) Utility.DelayAction.Add(250, ResetAutoAttack);
-            if (!args.SData.IsAutoAttack()) return;
+            if (!args.SData.IsAutoAttack() || args.SData.Name.ToLower() == "lucianpassiveattack") return;
             if (args.Target is AttackableUnit)
             {
                 LastAttack = Environment.TickCount - Game.Ping / 2;
@@ -210,7 +205,7 @@ namespace BrianSharp.Common
             if (sender is Obj_LampBulb) return;
             if (!sender.IsValid<Obj_SpellMissile>()) return;
             var missile = (Obj_SpellMissile)sender;
-            if (!missile.SData.IsAutoAttack()) return;
+            if (!missile.SData.IsAutoAttack() || missile.SData.Name.ToLower() == "lucianpassiveattack") return;
             if (missile.SpellCaster.IsMe)
             {
                 FireAfterAttack(LastTarget);
@@ -236,7 +231,7 @@ namespace BrianSharp.Common
             Player.IssueOrder(GameObjectOrder.MoveTo, Player.ServerPosition.Extend(Pos, (RandomPos.NextFloat(0.6f, 1) + 0.2f) * 300));
         }
 
-        public static void Orbwalk(Vector3 Pos, AttackableUnit Target)
+        public static void Orbwalk(AttackableUnit Target)
         {
             if (Target.IsValidTarget() && (CanAttack() || HaveCancled()) && IsAllowedToAttack())
             {
@@ -254,13 +249,13 @@ namespace BrianSharp.Common
                 }
             }
             if (!CanMove() || !IsAllowedToMove()) return;
-            if (Player.IsMelee() && InAutoAttackRange(Target) && Target is Obj_AI_Hero && Config.Item("OW_Misc_MeleeMagnet").GetValue<bool>() && ((Obj_AI_Hero)Target).Distance(Game.CursorPos) < 300)
+            if (Player.IsMelee() && Player.AttackRange <= 200 && InAutoAttackRange(Target) && Target is Obj_AI_Hero && Config.Item("OW_Misc_MeleeMagnet").GetValue<bool>() && ((Obj_AI_Hero)Target).Distance(Game.CursorPos) < 300)
             {
                 MovePrediction.Delay = Player.BasicAttack.SpellCastTime;
                 MovePrediction.Speed = Player.BasicAttack.MissileSpeed;
                 MoveTo(MovePrediction.GetPrediction((Obj_AI_Hero)Target).UnitPosition);
             }
-            else MoveTo(Pos);
+            else MoveTo(Game.CursorPos);
         }
 
         private static void ResetAutoAttack()
@@ -307,6 +302,7 @@ namespace BrianSharp.Common
             if (windUp < 40) windUp = 40;
             Config.Item("OW_Misc_ExtraWindUp").SetValue(windUp < 200 ? new Slider(windUp, 0, 200) : new Slider(200, 0, 200));
             WindUp = windUp;
+            Config.Item("OW_Misc_AutoWindUp").SetValue(false);
         }
 
         private static int GetCurrentWindupTime()
@@ -338,7 +334,7 @@ namespace BrianSharp.Common
             return Player.GetAutoAttackDamage((Obj_AI_Base)Target, true);
         }
 
-        public static bool CanAttack()
+        private static bool CanAttack()
         {
             if (LastAttack <= Environment.TickCount) return Environment.TickCount + Game.Ping / 2 + 25 >= LastAttack + Player.AttackDelay * 1000 && Attack;
             return false;
@@ -350,7 +346,7 @@ namespace BrianSharp.Common
             return false;
         }
 
-        public static bool CanMove()
+        private static bool CanMove()
         {
             if (LastAttack <= Environment.TickCount) return Environment.TickCount + Game.Ping / 2 >= LastAttack + Player.AttackCastDelay * 1000 + WindUp && Move;
             return false;
@@ -373,22 +369,22 @@ namespace BrianSharp.Common
             }
         }
 
-        public static void SetAttack(bool Value)
-        {
-            Attack = Value;
-        }
+        //public static void SetAttack(bool Value)
+        //{
+        //    Attack = Value;
+        //}
 
-        public static void SetMovement(bool Value)
-        {
-            Move = Value;
-        }
+        //public static void SetMovement(bool Value)
+        //{
+        //    Move = Value;
+        //}
 
         private static bool ShouldWait()
         {
             return ObjectManager.Get<Obj_AI_Minion>().Any(i => InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral && HealthPrediction.LaneClearHealthPrediction(i, (int)(Player.AttackDelay * 1000 * ClearWaitTime), GetCurrentFarmDelay) <= (Player.ChampionName == "Azir" ? GetAzirWDamage(i) : Player.GetAutoAttackDamage(i, true)));
         }
 
-        public static AttackableUnit GetPossibleTarget()
+        private static AttackableUnit GetPossibleTarget()
         {
             AttackableUnit Target = null;
             if (Config.Item("OW_Misc_PriorityUnit").GetValue<StringList>().SelectedIndex == 1 && (CurrentMode == Mode.Harass || CurrentMode == Mode.LaneClear))

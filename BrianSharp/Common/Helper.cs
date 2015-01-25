@@ -4,11 +4,12 @@ using System.Collections.Generic;
 
 using LeagueSharp;
 using LeagueSharp.Common;
+using LeagueSharp.Common.Data;
 using SharpDX;
 
 namespace BrianSharp.Common
 {
-    public class Helper : Program
+    class Helper : Program
     {
         #region Menu
         public static MenuItem AddItem(Menu SubMenu, string Item, string Display, string Key, KeyBindType Type = KeyBindType.Press, bool State = false)
@@ -54,7 +55,7 @@ namespace BrianSharp.Common
 
         public static void CustomOrbwalk(Obj_AI_Base Target)
         {
-            Orbwalker.Orbwalk(Game.CursorPos, Orbwalker.InAutoAttackRange(Target) ? Target : null);
+            Orbwalker.Orbwalk(Orbwalker.InAutoAttackRange(Target) ? Target : null);
         }
 
         public static bool CanKill(Obj_AI_Base Target, Spell Skill, double Health, double SubDmg)
@@ -95,7 +96,7 @@ namespace BrianSharp.Common
             InventorySlot Ward = null;
             int[] WardPink = { 3362, 2043 };
             int[] WardGreen = { 3340, 3361, 2049, 2045, 2044 };
-            if (GetValue<bool>("Misc", "WJPink") && WardPink.Any(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.Find(i => i.Id == (ItemId)WardPink.Find(a => Items.CanUseItem(a)));
+            if (GetValue<bool>("Flee", "PinkWard") && WardPink.Any(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.Find(i => i.Id == (ItemId)WardPink.Find(a => Items.CanUseItem(a)));
             if (WardGreen.Any(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.Find(i => i.Id == (ItemId)WardGreen.Find(a => Items.CanUseItem(a)));
             return Ward;
         }
@@ -103,14 +104,14 @@ namespace BrianSharp.Common
         public static float GetWardRange()
         {
             int[] TricketWard = { 3340, 3361, 3362 };
-            return 600 * ((Player.Masteries.Any(i => i.Page == MasteryPage.Utility && i.Id == 68 && i.Points == 1) && GetWardSlot() != null && TricketWard.Contains((int)GetWardSlot().Id)) ? 1.15f : 1);
+            return 600 * ((Player.HasMastery(MasteryData.Scout) && GetWardSlot() != null && TricketWard.Contains((int)GetWardSlot().Id)) ? 1.15f : 1);
         }
 
         public static bool CanSmiteMob(string Name)
         {
-            if (!Smite.IsReady() || Name.Contains("Mini")) return false;
             if (GetValue<bool>("SmiteMob", "Baron") && Name.StartsWith("SRU_Baron")) return true;
             if (GetValue<bool>("SmiteMob", "Dragon") && Name.StartsWith("SRU_Dragon")) return true;
+            if (Name.Contains("Mini")) return false;
             if (GetValue<bool>("SmiteMob", "Red") && Name.StartsWith("SRU_Red")) return true;
             if (GetValue<bool>("SmiteMob", "Blue") && Name.StartsWith("SRU_Blue")) return true;
             if (GetValue<bool>("SmiteMob", "Krug") && Name.StartsWith("SRU_Krug")) return true;
@@ -118,16 +119,6 @@ namespace BrianSharp.Common
             if (GetValue<bool>("SmiteMob", "Raptor") && Name.StartsWith("SRU_Razorbeak")) return true;
             if (GetValue<bool>("SmiteMob", "Wolf") && Name.StartsWith("SRU_Murkwolf")) return true;
             return false;
-        }
-
-        public static void CastSkillShotSmite(Spell Skill, Obj_AI_Hero Target)
-        {
-            var Pred = Skill.GetPrediction(Target);
-            if (GetValue<bool>("Misc", "SmiteCol") && Pred.CollisionObjects.Count == 1 && Q.MinHitChance == HitChance.High && CastSmite(Pred.CollisionObjects.First()))
-            {
-                Q.Cast(Pred.CastPosition, PacketCast);
-            }
-            else Q.CastIfHitchanceEquals(Target, HitChance.VeryHigh, PacketCast);
         }
     }
 }

@@ -5,13 +5,14 @@ using Color = System.Drawing.Color;
 
 using LeagueSharp;
 using LeagueSharp.Common;
+using LeagueSharp.Common.Data;
 using SharpDX;
 
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp.Plugin
 {
-    public class Lucian : Common.Helper
+    class Lucian : Common.Helper
     {
         private bool QCasted = false, WCasted = false, ECasted = false;
         private Obj_AI_Hero RTarget = null;
@@ -21,12 +22,12 @@ namespace BrianSharp.Plugin
         public Lucian()
         {
             Q = new Spell(SpellSlot.Q, 630);
-            Q2 = new Spell(SpellSlot.Q, 1130);
-            W = new Spell(SpellSlot.W, 1080, TargetSelector.DamageType.Magical);
+            Q2 = new Spell(SpellSlot.Q, 1300);
+            W = new Spell(SpellSlot.W, 1080);
             E = new Spell(SpellSlot.E, 445);
             R = new Spell(SpellSlot.R, 1460);
-            Q.SetTargetted(0, 500);
-            Q2.SetSkillshot(0, 65, 500, false, SkillshotType.SkillshotLine);
+            Q.SetTargetted(0.5f, float.MaxValue);
+            Q2.SetSkillshot(0.5f, 65, float.MaxValue, false, SkillshotType.SkillshotLine);
             W.SetSkillshot(0, 80, 500, true, SkillshotType.SkillshotLine);
             R.SetSkillshot(0, 60, 500, true, SkillshotType.SkillshotLine);
 
@@ -101,6 +102,7 @@ namespace BrianSharp.Plugin
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             Obj_AI_Hero.OnProcessSpellCast += OnProcessSpellCast;
+            Spellbook.OnCastSpell += OnCastSpell;
             Orbwalk.AfterAttack += AfterAttack;
         }
 
@@ -116,7 +118,7 @@ namespace BrianSharp.Plugin
             KillSteal();
             if (Player.IsChannelingImportantSpell())
             {
-                LockROnTarget();
+                if (GetValue<bool>("Misc", "LockR")) LockROnTarget();
                 return;
             }
             else
@@ -133,7 +135,7 @@ namespace BrianSharp.Plugin
             {
                 LaneJungClear();
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee && GetValue<bool>("Flee", "E") && E.IsReady()) E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast);
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee && GetValue<bool>("Flee", "E") && E.IsReady() && E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast)) return;
             if (GetValue<KeyBind>("Harass", "AutoQ").Active) AutoQ();
         }
 
@@ -157,19 +159,25 @@ namespace BrianSharp.Plugin
             if (args.SData.Name == "LucianQ")
             {
                 QCasted = true;
-                Utility.DelayAction.Add(400, () => QCasted = false);
+                Utility.DelayAction.Add(500, () => QCasted = false);
             }
             if (args.SData.Name == "LucianW")
             {
                 WCasted = true;
-                Utility.DelayAction.Add(400, () => WCasted = false);
+                Utility.DelayAction.Add(500, () => WCasted = false);
             }
             if (args.SData.Name == "LucianE")
             {
                 ECasted = true;
-                Utility.DelayAction.Add(400, () => ECasted = false);
+                Utility.DelayAction.Add(500, () => ECasted = false);
             }
             if (args.SData.Name == "LucianR" && !RKillable) REndPos = (Player.ServerPosition - (Player.ServerPosition.To2D() + R.Range * Player.Direction.To2D().Perpendicular()).To3D()).Normalized();
+        }
+
+        private void OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
+        {
+            if (!sender.Owner.IsMe) return;
+            if (args.Slot == SpellSlot.W && Player.IsDashing()) args.Process = false;
         }
 
         private void AfterAttack(AttackableUnit Target)
@@ -179,7 +187,7 @@ namespace BrianSharp.Plugin
             {
                 if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.Harass || (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && GetValue<StringList>("Combo", "EMode").SelectedIndex == 0))
                 {
-                    var Pos = Geometry.CircleCircleIntersection(Player.ServerPosition.To2D(), ((Obj_AI_Base)Target).ServerPosition.To2D(), E.Range, Orbwalk.GetAutoAttackRange(Player, Target) - 40);
+                    var Pos = Geometry.CircleCircleIntersection(Player.ServerPosition.To2D(), ((Obj_AI_Base)Target).ServerPosition.To2D(), E.Range, Orbwalk.GetAutoAttackRange(Player, Target));
                     if (Pos.Count() > 0)
                     {
                         if (E.Cast(Pos.MinOrDefault(i => i.Distance(Game.CursorPos)), PacketCast)) return;
@@ -203,15 +211,14 @@ namespace BrianSharp.Plugin
 
         private void NormalCombo(string Mode)
         {
-            if (Player.IsDashing()) return;
             if (Mode == "Combo" && GetValue<bool>(Mode, "R") && R.IsReady())
             {
                 var Target = R.GetTarget();
                 if (Target != null && CanKill(Target, R, GetRDmg(Target)))
                 {
-                    if ((Player.Distance(Target, true) > Math.Pow(800, 2) && Player.Distance(Target, true) <= Math.Pow(1075, 2)) || (!Orbwalk.InAutoAttackRange(Target) && Player.Distance(Target, true) <= Math.Pow(800, 2) && (!GetValue<bool>(Mode, "Q") || (GetValue<bool>(Mode, "Q") && !Q.IsReady())) && (!GetValue<bool>(Mode, "W") || (GetValue<bool>(Mode, "W") && !W.IsReady())) && (!GetValue<bool>(Mode, "E") || (GetValue<bool>(Mode, "E") && !E.IsReady()))))
+                    if (Player.Distance(Target, true) > Math.Pow(550, 2) || (!Orbwalk.InAutoAttackRange(Target) && Player.Distance(Target, true) <= Math.Pow(550, 2) && (!GetValue<bool>(Mode, "Q") || (GetValue<bool>(Mode, "Q") && !Q.IsReady())) && (!GetValue<bool>(Mode, "W") || (GetValue<bool>(Mode, "W") && !W.IsReady())) && (!GetValue<bool>(Mode, "E") || (GetValue<bool>(Mode, "E") && !E.IsReady()))))
                     {
-                        if (R.Cast(Target, PacketCast) == Spell.CastStates.SuccessfullyCasted)
+                        if (R.CastIfHitchanceEquals(Target, HitChance.Medium, PacketCast))
                         {
                             RTarget = Target;
                             REndPos = (Player.ServerPosition - Target.ServerPosition).Normalized();
@@ -237,20 +244,19 @@ namespace BrianSharp.Plugin
                     if (Target == null) Target = Q2.GetTarget();
                     if (Target != null)
                     {
-                        if (((Orbwalk.InAutoAttackRange(Target) && !HavePassive(Mode)) || (Player.Distance(Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, Target) + 40, 2) && Q.IsInRange(Target))) && Q.Cast(Target, PacketCast) == Spell.CastStates.SuccessfullyCasted)
+                        if (((Orbwalk.InAutoAttackRange(Target) && !HavePassive(Mode)) || (Player.Distance(Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, Target) + 20, 2) && Q.IsInRange(Target))) && Q.CastOnUnit(Target, PacketCast) && Player.IssueOrder(GameObjectOrder.AttackUnit, Target))
                         {
-                            Utility.DelayAction.Add(300, () => Player.IssueOrder(GameObjectOrder.AttackUnit, Target));
                             return;
                         }
                         else if ((Mode == "Harass" || (Mode == "Combo" && GetValue<bool>(Mode, "QExtend"))) && !Q.IsInRange(Target) && CastExtendQ(Target)) return;
                     }
                 }
-                if ((!GetValue<bool>(Mode, "Q") || (GetValue<bool>(Mode, "Q") && !Q.IsReady())) && GetValue<bool>(Mode, "W") && W.IsReady())
+                if ((!GetValue<bool>(Mode, "Q") || (GetValue<bool>(Mode, "Q") && !Q.IsReady())) && GetValue<bool>(Mode, "W") && W.IsReady() && !Player.IsDashing())
                 {
                     var Target = W.GetTarget();
-                    if (Target != null && ((Orbwalk.InAutoAttackRange(Target) && !HavePassive(Mode)) || (Player.Distance(Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, Target) + 40, 2))))
+                    if (Target != null && ((Orbwalk.InAutoAttackRange(Target) && !HavePassive(Mode)) || (Player.Distance(Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, Target) + 20, 2))))
                     {
-                        if ((Mode == "Harass" || (Mode == "Combo" && GetValue<bool>(Mode, "WPred"))) && W.Cast(Target, PacketCast) == Spell.CastStates.SuccessfullyCasted)
+                        if ((Mode == "Harass" || (Mode == "Combo" && GetValue<bool>(Mode, "WPred"))) && W.CastIfHitchanceEquals(Target, HitChance.Medium, PacketCast))
                         {
                             return;
                         }
@@ -263,26 +269,30 @@ namespace BrianSharp.Plugin
         private void LaneJungClear()
         {
             var minionObj = MinionManager.GetMinions(Q2.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-            if (minionObj.Count == 0 || Player.IsDashing() || HavePassive()) return;
+            if (minionObj.Count == 0) return;
             if (!GetValue<bool>("Clear", "E") || (GetValue<bool>("Clear", "E") && !E.IsReady()))
             {
                 if (GetValue<bool>("Clear", "E") && E.IsReady(GetValue<Slider>("Clear", "EDelay").Value)) return;
-                if (GetValue<bool>("Clear", "W") && W.IsReady())
+                if (GetValue<bool>("Clear", "W") && W.IsReady() && !HavePassive() && !Player.IsDashing())
                 {
-                    var Pos = W.GetLineFarmLocation(minionObj.FindAll(i => W.IsInRange(i)), W.Width / 2);
-                    if (Pos.MinionsHit > 0 && W.Cast(Pos.Position, PacketCast)) return;
+                    var Pos = W.GetCircularFarmLocation(minionObj.FindAll(i => W.IsInRange(i)));
+                    if (Pos.MinionsHit > 1)
+                    {
+                        if (Pos.Position.IsValid() && W.Cast(Pos.Position, PacketCast)) return;
+                    }
+                    else
+                    {
+                        var Obj = minionObj.Find(i => i.MaxHealth >= 1200);
+                        if (Obj != null && W.IsInRange(Obj) && W.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast)) return;
+                    }
                 }
-                if ((!GetValue<bool>("Clear", "W") || (GetValue<bool>("Clear", "W") && !W.IsReady())) && GetValue<bool>("Clear", "Q") && Q.IsReady())
+                if ((!GetValue<bool>("Clear", "W") || (GetValue<bool>("Clear", "W") && !W.IsReady())) && GetValue<bool>("Clear", "Q") && Q.IsReady() && !HavePassive())
                 {
                     var Pos = Q2.GetLineFarmLocation(minionObj);
-                    if (Pos.MinionsHit > 0)
+                    if (Pos.MinionsHit > 0 && Pos.Position.IsValid())
                     {
-                        var Obj = minionObj.Find(i => Q.IsInRange(i) && Q2.WillHit(i.ServerPosition, Pos.Position.To3D().Extend(Player.ServerPosition, -Q2.Range), (int)(i.BoundingRadius / 4)));
-                        if (Obj != null && Q.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted)
-                        {
-                            Utility.DelayAction.Add(300, () => Player.IssueOrder(GameObjectOrder.AttackUnit, Obj));
-                            return;
-                        }
+                        var Obj = minionObj.Find(i => Q.IsInRange(i) && Q2.WillHit(i, Pos.Position.To3D().Extend(Player.ServerPosition, -Q2.Range), (int)(i.BoundingRadius / 4)));
+                        if (Obj != null && Q.CastOnUnit(Obj, PacketCast) && Player.IssueOrder(GameObjectOrder.AttackUnit, Obj)) return;
                     }
                 }
             }
@@ -290,7 +300,7 @@ namespace BrianSharp.Plugin
 
         private void AutoQ()
         {
-            if (Player.IsDashing() || !Q.IsReady() || Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value) return;
+            if (!Q.IsReady() || Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value) return;
             var Target = Q2.GetTarget();
             if (Target != null && !Q.IsInRange(Target) && CastExtendQ(Target)) return;
         }
@@ -299,7 +309,7 @@ namespace BrianSharp.Plugin
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
-                var Target = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.True);
+                var Target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
                 if (Target != null && CastIgnite(Target)) return;
             }
             if (Player.IsDashing() || (!GetValue<bool>("KillSteal", "RStop") && Player.IsChannelingImportantSpell())) return;
@@ -312,53 +322,41 @@ namespace BrianSharp.Plugin
                 {
                     if (Q.IsInRange(Target))
                     {
-                        if ((!CancelR || (CancelR && R.Cast(PacketCast))) && Q.Cast(Target, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+                        if ((!CancelR || (CancelR && R.Cast(PacketCast))) && Q.CastOnUnit(Target, PacketCast)) return;
                     }
                     else if (CastExtendQ(Target, CancelR)) return;
                 }
             }
-            if (GetValue<bool>("KillSteal", "W") && W.IsReady())
+            if (GetValue<bool>("KillSteal", "W") && W.IsReady() && !Player.IsDashing())
             {
                 var Target = W.GetTarget();
-                if (Target != null && CanKill(Target, W) && (!CancelR || (CancelR && R.Cast(PacketCast))) && W.Cast(Target, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+                if (Target != null && CanKill(Target, W) && (!CancelR || (CancelR && R.Cast(PacketCast))) && W.CastIfHitchanceEquals(Target, HitChance.Medium, PacketCast)) return;
             }
         }
 
         private void LockROnTarget()
         {
-            if (GetValue<bool>("Misc", "LockR"))
+            var Target = RTarget.IsValidTarget() ? RTarget : R.GetTarget();
+            if (Target == null || REndPos == default(Vector3)) return;
+            var Pos = R.GetPrediction(Target).CastPosition;
+            var FullPoint = new Vector2(Pos.X + REndPos.X * R.Range * 0.98f, Pos.Y + REndPos.Y * R.Range * 0.98f).To3D();
+            //var MidPoint = new Vector2((FullPoint.X * 2 - Pos.X) / Pos.Distance(FullPoint) * R.Range * 0.98f, (FullPoint.Y * 2 - Pos.Y) / Pos.Distance(FullPoint) * R.Range * 0.98f).To3D();
+            var ClosestPoint = Player.ServerPosition.To2D().Closest(new List<Vector3> { Pos, FullPoint }.To2D()).To3D();
+            if (ClosestPoint.IsValid() && !ClosestPoint.IsWall() && Pos.Distance(ClosestPoint) > E.Range)
             {
-                var Target = RTarget.IsValidTarget() ? RTarget : R.GetTarget();
-                if (Target == null || REndPos == default(Vector3))
-                {
-                    Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPos);
-                    return;
-                }
-                var Pos = R.GetPrediction(Target).CastPosition;
-                var FullPoint = new Vector2(Pos.X + REndPos.X * R.Range * 0.98f, Pos.Y + REndPos.Y * R.Range * 0.98f).To3D();
-                //var MidPoint = new Vector2((FullPoint.X * 2 - Pos.X) / Pos.Distance(FullPoint) * R.Range * 0.98f, (FullPoint.Y * 2 - Pos.Y) / Pos.Distance(FullPoint) * R.Range * 0.98f).To3D();
-                var ClosestPoint = Player.ServerPosition.To2D().Closest(new List<Vector3> { Pos, FullPoint }.To2D()).To3D();
-                if (ClosestPoint.IsValid() && !ClosestPoint.IsWall() && Pos.Distance(ClosestPoint) > E.Range)
-                {
-                    Player.IssueOrder(GameObjectOrder.MoveTo, ClosestPoint);
-                }
-                else if (FullPoint.IsValid() && !FullPoint.IsWall() && Pos.Distance(FullPoint) < R.Range && Pos.Distance(FullPoint) > 100)
-                {
-                    Player.IssueOrder(GameObjectOrder.MoveTo, FullPoint);
-                }
-                //else if (MidPoint.IsValid() && !MidPoint.IsWall())
-                //{
-                //    Player.IssueOrder(GameObjectOrder.MoveTo, MidPoint);
-                //}
-                else Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPos);
+                Player.IssueOrder(GameObjectOrder.MoveTo, ClosestPoint);
             }
-            else Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPos);
+            else if (FullPoint.IsValid() && !FullPoint.IsWall() && Pos.Distance(FullPoint) < R.Range && Pos.Distance(FullPoint) > 100)
+            {
+                Player.IssueOrder(GameObjectOrder.MoveTo, FullPoint);
+            }
+            //else if (MidPoint.IsValid() && !MidPoint.IsWall()) Player.IssueOrder(GameObjectOrder.MoveTo, MidPoint);
         }
 
         private bool CastExtendQ(Obj_AI_Hero Target, bool CancelR = false)
         {
-            var Obj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Find(i => Q2.WillHit(Target.ServerPosition, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range), (int)(Target.BoundingRadius / 4)));
-            if (Obj != null && (!CancelR || (CancelR && R.Cast(PacketCast))) && Q.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return true;
+            var Obj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Find(i => Q2.WillHit(Target, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range), (int)(Target.BoundingRadius / 4)));
+            if (Obj != null && (!CancelR || (CancelR && R.Cast(PacketCast))) && Q.CastOnUnit(Obj, PacketCast)) return true;
             return false;
         }
 

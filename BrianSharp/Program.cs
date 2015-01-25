@@ -9,12 +9,12 @@ using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp
 {
-    public class Program
+    class Program
     {
         public static Obj_AI_Hero Player;
         public static Spell Q, Q2, W, W2, E, E2, R;
         public static SpellSlot Flash, Smite, Ignite;
-        public static Items.Item Tiamat, Hydra, Youmuu, Sheen, Iceborn, Trinity;
+        public static Items.Item Tiamat, Hydra, Youmuu, Zhonya, Sheen, Iceborn, Trinity;
         public static Menu MainMenu;
         public static String PlayerName;
 
@@ -44,6 +44,7 @@ namespace BrianSharp
                     Tiamat = ItemData.Tiamat_Melee_Only.GetItem();
                     Hydra = ItemData.Ravenous_Hydra_Melee_Only.GetItem();
                     Youmuu = ItemData.Youmuus_Ghostblade.GetItem();
+                    Zhonya = ItemData.Zhonyas_Hourglass.GetItem();
                     Sheen = ItemData.Sheen.GetItem();
                     Iceborn = ItemData.Iceborn_Gauntlet.GetItem();
                     Trinity = ItemData.Trinity_Force.GetItem();
@@ -62,7 +63,7 @@ namespace BrianSharp
         }
     }
 
-    public class HTMLColor
+    class HTMLColor
     {
         public const string AliceBlue = "#F0F8FF";
         public const string AntiqueWhite = "#FAEBD7";

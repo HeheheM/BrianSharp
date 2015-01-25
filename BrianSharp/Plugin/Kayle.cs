@@ -27,10 +27,10 @@ namespace BrianSharp.Plugin
 
         public Kayle()
         {
-            Q = new Spell(SpellSlot.Q, 657.5f, TargetSelector.DamageType.Magical);
-            W = new Spell(SpellSlot.W, 904.35f);
-            E = new Spell(SpellSlot.E, 525, TargetSelector.DamageType.Magical);
-            R = new Spell(SpellSlot.R, 915.95f);
+            Q = new Spell(SpellSlot.Q, 655);
+            W = new Spell(SpellSlot.W, 900);
+            E = new Spell(SpellSlot.E, 525);
+            R = new Spell(SpellSlot.R, 915);
             Q.SetTargetted(0.5f, 1500);
             W.SetTargetted(0.3333f, float.MaxValue);
             R.SetTargetted(0.5f, float.MaxValue);
@@ -43,9 +43,8 @@ namespace BrianSharp.Plugin
                     {
                         foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsAlly))
                         {
-                            var Name = Obj.IsMe ? "Self" : Obj.ChampionName;
-                            AddItem(HealMenu, Name, Name);
-                            AddItem(HealMenu, Name + "HpU", "-> If Hp Under", 40);
+                            AddItem(HealMenu, MenuName(Obj), MenuName(Obj));
+                            AddItem(HealMenu, MenuName(Obj) + "HpU", "-> If Hp Under", 40);
                         }
                         ComboMenu.AddSubMenu(HealMenu);
                     }
@@ -53,9 +52,8 @@ namespace BrianSharp.Plugin
                     {
                         foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsAlly))
                         {
-                            var Name = Obj.IsMe ? "Self" : Obj.ChampionName;
-                            AddItem(SaveMenu, Name, Name);
-                            AddItem(SaveMenu, Name + "HpU", "-> If Hp Under", 30);
+                            AddItem(SaveMenu, MenuName(Obj), MenuName(Obj));
+                            AddItem(SaveMenu, MenuName(Obj) + "HpU", "-> If Hp Under", 30);
                         }
                         ComboMenu.AddSubMenu(SaveMenu);
                     }
@@ -119,6 +117,7 @@ namespace BrianSharp.Plugin
                         AddItem(KillStealMenu, "Ignite", "Use Ignite");
                         MiscMenu.AddSubMenu(KillStealMenu);
                     }
+                    AddItem(MiscMenu, "QLastHit", "Use Q To Last Hit");
                     ChampMenu.AddSubMenu(MiscMenu);
                 }
                 var DrawMenu = new Menu("Draw", "Draw");
@@ -146,6 +145,10 @@ namespace BrianSharp.Plugin
             {
                 LaneJungClear();
             }
+            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit)
+            {
+                LastHit();
+            }
             else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee) Flee();
             if (GetValue<KeyBind>("Harass", "AutoQ").Active) AutoQ();
             KillSteal();
@@ -163,20 +166,24 @@ namespace BrianSharp.Plugin
         {
             if (Mode == "Combo" && GetValue<bool>(Mode, "E") && GetValue<bool>(Mode, "EAoE") && Player.HasBuff("JudicatorRighteousFury"))
             {
-                var Target = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => Orbwalk.InAutoAttackRange(i)).MaxOrDefault(i => i.CountEnemysInRange(150));
+                var Target = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => Orbwalk.InAutoAttackRange(i)).MaxOrDefault(i => i.CountEnemiesInRange(150));
                 if (Target != null) Orbwalk.ForcedTarget = Target;
             }
             else Orbwalk.ForcedTarget = null;
-            if (GetValue<bool>(Mode, "Q") && Q.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
-            if ((!GetValue<bool>(Mode, "Q") || (GetValue<bool>(Mode, "Q") && !Q.IsReady())) && GetValue<bool>(Mode, "E") && E.IsReady() && E.GetTarget() != null && E.Cast(PacketCast)) return;
+            if (GetValue<bool>(Mode, "Q"))
+            {
+                var Target = Q.GetTarget();
+                if (Target != null && ((Player.Distance(Target, true) > Math.Pow(Q.Range - 100, 2) && !Target.IsFacing(Player)) || Target.HealthPercentage() > 60) && Q.CastOnUnit(Target, PacketCast)) return;
+            }
+            if (GetValue<bool>(Mode, "E") && E.IsReady() && E.GetTarget() != null && E.Cast(PacketCast)) return;
             if (Mode == "Combo")
             {
                 if (GetValue<bool>(Mode, "W") && W.IsReady())
                 {
                     if (GetValue<bool>(Mode, "WHeal"))
                     {
-                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsValidTarget(W.Range, false) && i.IsAlly && GetValue<bool>("Heal", MenuName(i)) && i.HealthPercentage() < GetValue<Slider>("Heal", MenuName(i) + "HpU").Value && !i.InFountain() && !i.IsRecalling() && i.CountEnemysInRange(W.Range) >= 1 && !i.HasBuff("JudicatorIntervention") && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
-                        if (Obj != null && W.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsAlly && i.IsValidTarget(W.Range, false) && GetValue<bool>("Heal", MenuName(i)) && i.HealthPercentage() < GetValue<Slider>("Heal", MenuName(i) + "HpU").Value && !i.InFountain() && !i.IsRecalling() && i.CountEnemiesInRange(W.Range) > 0 && !i.HasBuff("JudicatorIntervention") && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
+                        if (Obj != null && W.CastOnUnit(Obj, PacketCast)) return;
                     }
                     if (GetValue<bool>(Mode, "WSpeed"))
                     {
@@ -188,13 +195,13 @@ namespace BrianSharp.Plugin
                 {
                     if (GetValue<bool>(Mode, "RSave"))
                     {
-                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsValidTarget(R.Range, false) && i.IsAlly && GetValue<bool>("Save", MenuName(i)) && i.HealthPercentage() < GetValue<Slider>("Save", MenuName(i) + "HpU").Value && !i.InFountain() && !i.IsRecalling() && i.CountEnemysInRange(W.Range) >= 1 && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
-                        if (Obj != null && R.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsAlly && i.IsValidTarget(R.Range, false) && GetValue<bool>("Save", MenuName(i)) && i.HealthPercentage() < GetValue<Slider>("Save", MenuName(i) + "HpU").Value && !i.InFountain() && !i.IsRecalling() && i.CountEnemiesInRange(R.Range) > 0 && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
+                        if (Obj != null && R.CastOnUnit(Obj, PacketCast)) return;
                     }
                     if (GetValue<StringList>(Mode, "RAnti").SelectedIndex > 0)
                     {
-                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsValidTarget(R.Range, false) && i.IsAlly && RAntiDetected.ContainsKey(i.NetworkId) && Game.Time > RAntiDetected[i.NetworkId].StartTick && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
-                        if (Obj != null && R.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsAlly && i.IsValidTarget(R.Range, false) && RAntiDetected.ContainsKey(i.NetworkId) && Game.Time > RAntiDetected[i.NetworkId].StartTick && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
+                        if (Obj != null && R.CastOnUnit(Obj, PacketCast)) return;
                     }
                 }
             }
@@ -204,14 +211,25 @@ namespace BrianSharp.Plugin
         {
             var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (minionObj.Count == 0) return;
-            if (GetValue<bool>("SmiteMob", "Smite") && minionObj.Any(i => i.Team == GameObjectTeam.Neutral && CanSmiteMob(i.Name) && CastSmite(i))) return;
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
                 var Obj = minionObj.Find(i => CanKill(i, Q));
                 if (Obj == null) Obj = minionObj.Find(i => i.MaxHealth >= 1200);
-                if (Obj != null && Q.Cast(Obj, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+                if (Obj != null && Q.CastOnUnit(Obj, PacketCast)) return;
             }
-            if (GetValue<bool>("Clear", "E") && E.IsReady() && (minionObj.Count >= 2 || minionObj.Count(i => i.MaxHealth >= 1200) >= 1) && E.Cast(PacketCast)) return;
+            if (GetValue<bool>("Clear", "E") && E.IsReady() && (minionObj.Count > 1 || minionObj.Count(i => i.MaxHealth >= 1200) > 0) && E.Cast(PacketCast)) return;
+            if (GetValue<bool>("SmiteMob", "Smite") && Smite.IsReady())
+            {
+                var Obj = minionObj.Find(i => i.Team == GameObjectTeam.Neutral && CanSmiteMob(i.Name));
+                if (Obj != null && CastSmite(Obj)) return;
+            }
+        }
+
+        private void LastHit()
+        {
+            if (!GetValue<bool>("Misc", "QLastHit") || !Q.IsReady()) return;
+            var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth).FindAll(i => CanKill(i, Q));
+            if (minionObj.Count == 0 || Q.CastOnUnit(minionObj.First(), PacketCast)) return;
         }
 
         private void Flee()
@@ -229,22 +247,22 @@ namespace BrianSharp.Plugin
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
-                var Target = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.True);
+                var Target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
                 if (Target != null && CastIgnite(Target)) return;
             }
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var Target = Q.GetTarget();
-                if (Target != null && CanKill(Target, Q) && Q.Cast(Target, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+                if (Target != null && CanKill(Target, Q) && Q.CastOnUnit(Target, PacketCast)) return;
             }
         }
 
         private void AntiDetect()
         {
             if (Player.IsDead || GetValue<StringList>("Combo", "RAnti").SelectedIndex == 0 || R.Level == 0) return;
-            var Key = ObjectManager.Get<Obj_AI_Hero>().Find(i => i.IsValidTarget(float.MaxValue, false) && i.IsAlly && RAntiDetected.ContainsKey(i.NetworkId) && Game.Time > RAntiDetected[i.NetworkId].EndTick);
+            var Key = ObjectManager.Get<Obj_AI_Hero>().Find(i => i.IsAlly && i.IsValidTarget(float.MaxValue, false) && RAntiDetected.ContainsKey(i.NetworkId) && Game.Time > RAntiDetected[i.NetworkId].EndTick);
             if (Key != null) RAntiDetected.Remove(Key.NetworkId);
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsValidTarget(float.MaxValue, false) && i.IsAlly && !RAntiDetected.ContainsKey(i.NetworkId)))
+            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsAlly && i.IsValidTarget(float.MaxValue, false) && !RAntiDetected.ContainsKey(i.NetworkId)))
             {
                 if ((GetValue<StringList>("Combo", "RAnti").SelectedIndex == 1 && Obj.IsMe) || (GetValue<StringList>("Combo", "RAnti").SelectedIndex == 2 && !Obj.IsMe) || GetValue<StringList>("Combo", "RAnti").SelectedIndex == 3)
                 {
@@ -254,7 +272,7 @@ namespace BrianSharp.Plugin
                         {
                             RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
                         }
-                        else if (Buff.DisplayName == "KarthusFallenOne" && GetValue<bool>("Anti", "Karthus") && Obj.Health <= ((Obj_AI_Hero)Buff.Caster).GetSpellDamage(Obj, SpellSlot.R) + Obj.Health * 0.2f && Obj.CountEnemysInRange(R.Range) >= 1) RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
+                        else if (Buff.DisplayName == "KarthusFallenOne" && GetValue<bool>("Anti", "Karthus") && Obj.Health <= ((Obj_AI_Hero)Buff.Caster).GetSpellDamage(Obj, SpellSlot.R) + Obj.Health * 0.2f && Obj.CountEnemiesInRange(R.Range) > 0) RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
                     }
                 }
             }
