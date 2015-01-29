@@ -32,6 +32,7 @@ namespace BrianSharp.Plugin
                     AddItem(ComboMenu, "Q", "Use Q");
                     AddItem(ComboMenu, "W", "Use W");
                     AddItem(ComboMenu, "E", "Use E");
+                    AddItem(ComboMenu, "ECountA", "-> Cancel If Enemy Above", 2, 1, 5);
                     AddItem(ComboMenu, "R", "Use R");
                     AddItem(ComboMenu, "RHpU", "-> If Player Hp Under", 60);
                     AddItem(ComboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
@@ -67,6 +68,11 @@ namespace BrianSharp.Plugin
                     AddItem(ClearMenu, "Item", "Use Tiamat/Hydra");
                     ChampMenu.AddSubMenu(ClearMenu);
                 }
+                var LastHitMenu = new Menu("Last Hit", "LastHit");
+                {
+                    AddItem(LastHitMenu, "W", "Use W");
+                    ChampMenu.AddSubMenu(LastHitMenu);
+                }
                 var FleeMenu = new Menu("Flee", "Flee");
                 {
                     AddItem(FleeMenu, "Q", "Use Q");
@@ -99,7 +105,6 @@ namespace BrianSharp.Plugin
                         }
                         MiscMenu.AddSubMenu(InterruptMenu);
                     }
-                    AddItem(MiscMenu, "WLastHit", "Use W To Last Hit");
                     ChampMenu.AddSubMenu(MiscMenu);
                 }
                 var DrawMenu = new Menu("Draw", "Draw");
@@ -182,7 +187,7 @@ namespace BrianSharp.Plugin
         private void BeforeAttack(Orbwalk.BeforeAttackEventArgs Args)
         {
             if (!W.IsReady()) return;
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && GetValue<bool>("Misc", "WLastHit") && Args.Target is Obj_AI_Minion && CanKill((Obj_AI_Minion)Args.Target, W, GetBonusDmg((Obj_AI_Minion)Args.Target)) && W.Cast(PacketCast)) return;
+            if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && GetValue<bool>("LastHit", "W") && Args.Target is Obj_AI_Minion && CanKill((Obj_AI_Minion)Args.Target, W, GetBonusDmg((Obj_AI_Minion)Args.Target)) && W.Cast(PacketCast)) return;
         }
 
         private void AfterAttack(AttackableUnit Target)
@@ -209,7 +214,7 @@ namespace BrianSharp.Plugin
                     }
                     else if (E.GetTarget() != null && E.Cast(PacketCast)) return;
                 }
-                else if (Player.CountEnemiesInRange(E.Range + 100) == 1 && E.GetTarget() != null && Player.Distance(E.GetTarget(), true) >= Math.Pow(E.Range - 30, 2) && E.Cast(PacketCast)) return;
+                else if ((Player.CountEnemiesInRange(E.Range) >= GetValue<Slider>(Mode, "ECountA").Value || (E.GetTarget() != null && Player.Distance(E.GetTarget(), true) >= Math.Pow(E.Range - 50, 2))) && E.Cast(PacketCast)) return;
             }
             if (Mode == "Harass" && GetValue<bool>(Mode, "R") && R.Level > 0 && GetValue<bool>(Mode, "W") && GetValue<bool>(Mode, "Q") && Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost)
             {
@@ -237,7 +242,7 @@ namespace BrianSharp.Plugin
                         }
                         else if (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= GetValue<Slider>(Mode, "QHpA").Value))
                         {
-                            if ((Player.Distance(Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, Target) + 40, 2) || (GetValue<bool>(Mode, "E") && E.IsReady() && Player.HasBuff("JaxEvasion") && !E.IsInRange(Target))) && Q.CastOnUnit(Target, PacketCast)) return;
+                            if ((Player.Distance(Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, Target) + 30, 2) || (GetValue<bool>(Mode, "E") && E.IsReady() && Player.HasBuff("JaxEvasion") && !E.IsInRange(Target))) && Q.CastOnUnit(Target, PacketCast)) return;
                         }
                     }
                 }
@@ -289,7 +294,7 @@ namespace BrianSharp.Plugin
 
         private void LastHit()
         {
-            if (!GetValue<bool>("Misc", "WLastHit") || !W.IsReady() || !Player.HasBuff("JaxEmpowerTwo")) return;
+            if (!GetValue<bool>("LastHit", "W") || !W.IsReady() || !Player.HasBuff("JaxEmpowerTwo")) return;
             var minionObj = MinionManager.GetMinions(Orbwalk.GetAutoAttackRange() + 50, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth).FindAll(i => CanKill(i, W, GetBonusDmg(i)));
             if (minionObj.Count == 0 || Player.IssueOrder(GameObjectOrder.AttackUnit, minionObj.First())) return;
         }

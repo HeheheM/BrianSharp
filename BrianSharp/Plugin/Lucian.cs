@@ -116,7 +116,7 @@ namespace BrianSharp.Plugin
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling()) return;
             KillSteal();
-            if (Player.IsChannelingImportantSpell())
+            if (Player.IsCastingInterruptableSpell(true))
             {
                 if (GetValue<bool>("Misc", "LockR")) LockROnTarget();
                 return;
@@ -312,8 +312,8 @@ namespace BrianSharp.Plugin
                 var Target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
                 if (Target != null && CastIgnite(Target)) return;
             }
-            if (Player.IsDashing() || (!GetValue<bool>("KillSteal", "RStop") && Player.IsChannelingImportantSpell())) return;
-            var CancelR = GetValue<bool>("KillSteal", "RStop") && Player.IsChannelingImportantSpell();
+            if (Player.IsDashing() || (!GetValue<bool>("KillSteal", "RStop") && Player.IsCastingInterruptableSpell(true))) return;
+            var CancelR = GetValue<bool>("KillSteal", "RStop") && Player.IsCastingInterruptableSpell(true);
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var Target = Q.GetTarget();

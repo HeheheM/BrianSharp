@@ -35,7 +35,6 @@ namespace BrianSharp.Common
         private static AttackableUnit LastTarget;
         private static Spell MovePrediction;
         private static readonly Random RandomPos = new Random(DateTime.Now.Millisecond);
-        private static readonly Dictionary<string, string[]> NoInterruptSpells = new Dictionary<string, string[]>() { { "Varus", new[] { "VarusQ" } }, { "Lucian", new[] { "LucianR" } } };
         public class BeforeAttackEventArgs
         {
             public AttackableUnit Target;
@@ -128,7 +127,6 @@ namespace BrianSharp.Common
                     }
                     OWMenu.AddSubMenu(ModeMenu);
                 }
-                OWMenu.AddItem(new MenuItem("OW_Info", "Credits: xSLx"));
                 Config.AddSubMenu(OWMenu);
             }
             MovePrediction = new Spell(SpellSlot.Unknown, GetAutoAttackRange());
@@ -143,8 +141,7 @@ namespace BrianSharp.Common
         private static void OnGameUpdate(EventArgs args)
         {
             CheckAutoWindUp();
-            if (Player.IsDead || CurrentMode == Mode.None || MenuGUI.IsChatOpen || Player.IsRecalling()) return;
-            if (Player.IsChannelingImportantSpell() && (!NoInterruptSpells.ContainsKey(Player.ChampionName) || !NoInterruptSpells[Player.ChampionName].Contains(Player.LastCastedSpellName()))) return;
+            if (Player.IsDead || CurrentMode == Mode.None || MenuGUI.IsChatOpen || Player.IsRecalling() || Player.IsCastingInterruptableSpell(true)) return;
             Orbwalk(CurrentMode == Mode.Flee ? null : GetPossibleTarget());
         }
 

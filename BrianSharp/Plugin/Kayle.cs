@@ -43,8 +43,9 @@ namespace BrianSharp.Plugin
                     {
                         foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsAlly))
                         {
-                            AddItem(HealMenu, MenuName(Obj), MenuName(Obj));
-                            AddItem(HealMenu, MenuName(Obj) + "HpU", "-> If Hp Under", 40);
+                            var Name = MenuName(Obj);
+                            AddItem(HealMenu, Name, Name);
+                            AddItem(HealMenu, Name + "HpU", "-> If Hp Under", 40);
                         }
                         ComboMenu.AddSubMenu(HealMenu);
                     }
@@ -52,8 +53,9 @@ namespace BrianSharp.Plugin
                     {
                         foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsAlly))
                         {
-                            AddItem(SaveMenu, MenuName(Obj), MenuName(Obj));
-                            AddItem(SaveMenu, MenuName(Obj) + "HpU", "-> If Hp Under", 30);
+                            var Name = MenuName(Obj);
+                            AddItem(SaveMenu, Name, Name);
+                            AddItem(SaveMenu, Name + "HpU", "-> If Hp Under", 30);
                         }
                         ComboMenu.AddSubMenu(SaveMenu);
                     }
@@ -103,6 +105,11 @@ namespace BrianSharp.Plugin
                     AddItem(ClearMenu, "E", "Use E");
                     ChampMenu.AddSubMenu(ClearMenu);
                 }
+                var LastHitMenu = new Menu("Last Hit", "LastHit");
+                {
+                    AddItem(LastHitMenu, "Q", "Use Q");
+                    ChampMenu.AddSubMenu(LastHitMenu);
+                }
                 var FleeMenu = new Menu("Flee", "Flee");
                 {
                     AddItem(FleeMenu, "Q", "Use Q To Slow Enemy");
@@ -117,7 +124,6 @@ namespace BrianSharp.Plugin
                         AddItem(KillStealMenu, "Ignite", "Use Ignite");
                         MiscMenu.AddSubMenu(KillStealMenu);
                     }
-                    AddItem(MiscMenu, "QLastHit", "Use Q To Last Hit");
                     ChampMenu.AddSubMenu(MiscMenu);
                 }
                 var DrawMenu = new Menu("Draw", "Draw");
@@ -227,7 +233,7 @@ namespace BrianSharp.Plugin
 
         private void LastHit()
         {
-            if (!GetValue<bool>("Misc", "QLastHit") || !Q.IsReady()) return;
+            if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady()) return;
             var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth).FindAll(i => CanKill(i, Q));
             if (minionObj.Count == 0 || Q.CastOnUnit(minionObj.First(), PacketCast)) return;
         }
@@ -235,12 +241,12 @@ namespace BrianSharp.Plugin
         private void Flee()
         {
             if (GetValue<bool>("Flee", "W") && W.IsReady() && W.Cast(PacketCast)) return;
-            if (GetValue<bool>("Flee", "Q") && Q.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+            if (GetValue<bool>("Flee", "Q") && Q.CastOnBestTarget(0, PacketCast).IsCasted()) return;
         }
 
         private void AutoQ()
         {
-            if (Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || Q.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+            if (Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || Q.CastOnBestTarget(0, PacketCast).IsCasted()) return;
         }
 
         private void KillSteal()

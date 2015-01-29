@@ -13,12 +13,11 @@ namespace BrianSharp.Plugin
     class JarvanIV : Common.Helper
     {
         private bool RCasted = false;
-        private Vector3 FlagPos = default(Vector3);
 
         public JarvanIV()
         {
             Q = new Spell(SpellSlot.Q, 880);
-            W = new Spell(SpellSlot.W, 505);
+            W = new Spell(SpellSlot.W, 525);
             E = new Spell(SpellSlot.E, 860);
             R = new Spell(SpellSlot.R, 650);
             Q.SetSkillshot(0.25f, 70, 1450, false, SkillshotType.SkillshotLine);
@@ -70,6 +69,11 @@ namespace BrianSharp.Plugin
                     AddItem(ClearMenu, "Item", "Use Tiamat/Hydra Item");
                     ChampMenu.AddSubMenu(ClearMenu);
                 }
+                var LastHitMenu = new Menu("Last Hit", "LastHit");
+                {
+                    AddItem(LastHitMenu, "Q", "Use Q");
+                    ChampMenu.AddSubMenu(LastHitMenu);
+                }
                 var FleeMenu = new Menu("Flee", "Flee");
                 {
                     AddItem(FleeMenu, "EQ", "Use EQ");
@@ -94,7 +98,6 @@ namespace BrianSharp.Plugin
                         }
                         MiscMenu.AddSubMenu(InterruptMenu);
                     }
-                    AddItem(MiscMenu, "QLastHit", "Use Q To Last Hit");
                     ChampMenu.AddSubMenu(MiscMenu);
                 }
                 var DrawMenu = new Menu("Draw", "Draw");
@@ -145,8 +148,8 @@ namespace BrianSharp.Plugin
         private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "EQ") || !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot.ToString()) || !Q.IsReady()) return;
-            if (E.CanCast(unit) && Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost && E.CastIfWillHit(unit, -1, PacketCast) && Q.Cast(unit.ServerPosition, PacketCast)) return;
-            if (FlagPos != default(Vector3) && Q.IsInRange(FlagPos) && (unit.Distance(FlagPos) <= 60 || (Player.Distance(unit, true) >= Math.Pow(50, 2) && Q.WillHit(unit.ServerPosition, FlagPos, 110))) && Q.Cast(FlagPos, PacketCast)) return;
+            if (E.CanCast(unit) && Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost && E.Cast(unit.ServerPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast) && Q.Cast(unit.ServerPosition, PacketCast)) return;
+            if (Flag != null && (unit.Distance(Flag, true) <= Math.Pow(60, 2) || (Player.Distance(unit, true) >= Math.Pow(50, 2) && Q.WillHit(unit, Flag.ServerPosition, 110))) && Q.Cast(Flag.ServerPosition, PacketCast)) return;
         }
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
@@ -157,11 +160,6 @@ namespace BrianSharp.Plugin
                 RCasted = true;
                 Utility.DelayAction.Add(3500, () => RCasted = false);
             }
-            if (args.SData.Name == "JarvanIVDemacianStandard")
-            {
-                FlagPos = args.End;
-                Utility.DelayAction.Add(8000, () => FlagPos = default(Vector3));
-            }
         }
 
         private void NormalCombo(string Mode)
@@ -169,16 +167,16 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>(Mode, "E") && E.IsReady())
             {
                 var Target = E.GetTarget();
-                if (Target != null && E.CastIfWillHit(Target, -1, PacketCast))
+                if (Target != null && E.Cast(Target.ServerPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast))
                 {
                     if (GetValue<bool>(Mode, "Q") && Q.IsReady() && (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= GetValue<Slider>(Mode, "QHpA").Value)) && Q.Cast(Target.ServerPosition, PacketCast)) return;
                     return;
                 }
             }
-            if ((!GetValue<bool>(Mode, "E") || (GetValue<bool>(Mode, "E") && !E.IsReady())) && GetValue<bool>(Mode, "Q") && Q.IsReady() && (Mode == "Combo" || (Mode == "Harass" && (FlagPos == default(Vector3) || (FlagPos != default(Vector3) && Player.HealthPercentage() >= GetValue<Slider>(Mode, "QHpA").Value)))))
+            if ((!GetValue<bool>(Mode, "E") || (GetValue<bool>(Mode, "E") && !E.IsReady())) && GetValue<bool>(Mode, "Q") && Q.IsReady() && (Mode == "Combo" || (Mode == "Harass" && (Flag == null || (Flag != null && Player.HealthPercentage() >= GetValue<Slider>(Mode, "QHpA").Value)))))
             {
                 var Target = Q.GetTarget();
-                if (GetValue<bool>(Mode, "E") && FlagPos != default(Vector3) && Q.IsInRange(FlagPos) && (Target.Distance(FlagPos) <= 60 || (Player.Distance(Target, true) >= Math.Pow(50, 2) && Q.WillHit(Target.ServerPosition, FlagPos, 110))) && Q.Cast(FlagPos, PacketCast))
+                if (GetValue<bool>(Mode, "E") && Flag != null && (Target.Distance(Flag, true) <= Math.Pow(60, 2) || (Player.Distance(Target, true) >= Math.Pow(50, 2) && Q.WillHit(Target, Flag.ServerPosition, 110))) && Q.Cast(Flag.ServerPosition, PacketCast))
                 {
                     return;
                 }
@@ -201,11 +199,11 @@ namespace BrianSharp.Plugin
 
         private void LaneJungClear()
         {
-            var minionObj = MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (minionObj.Count == 0) return;
             if (GetValue<bool>("Clear", "E") && E.IsReady() && (minionObj.Count > 1 || minionObj.Any(i => i.MaxHealth >= 1200)))
             {
-                var Pos = E.GetCircularFarmLocation(minionObj);
+                var Pos = E.GetCircularFarmLocation(minionObj.FindAll(i => E.IsInRange(i)));
                 if (Pos.MinionsHit > 0 && Pos.Position.IsValid() && E.Cast(Pos.Position, PacketCast))
                 {
                     if (GetValue<bool>("Clear", "Q") && Q.IsReady() && Q.Cast(Pos.Position, PacketCast)) return;
@@ -214,7 +212,7 @@ namespace BrianSharp.Plugin
             }
             if ((!GetValue<bool>("Clear", "E") || (GetValue<bool>("Clear", "E") && !E.IsReady())) && GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                if (GetValue<bool>("Clear", "E") && FlagPos != default(Vector3) && Q.IsInRange(FlagPos) && (minionObj.Count(i => i.Distance(FlagPos) <= 60) > 1 || minionObj.FindAll(i => Q.IsInRange(i) && Player.Distance(i, true) >= Math.Pow(50, 2)).Count(i => Q.WillHit(i.ServerPosition, FlagPos, 110)) > 1) && Q.Cast(FlagPos, PacketCast))
+                if (GetValue<bool>("Clear", "E") && Flag != null && (minionObj.Count(i => i.Distance(Flag, true) <= Math.Pow(60, 2)) > 1 || minionObj.Count(i => Q.WillHit(i, Flag.ServerPosition, 110)) > 1) && Q.Cast(Flag.ServerPosition, PacketCast))
                 {
                     return;
                 }
@@ -239,7 +237,7 @@ namespace BrianSharp.Plugin
 
         private void LastHit()
         {
-            if (!GetValue<bool>("Misc", "QLastHit") || !Q.IsReady()) return;
+            if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady()) return;
             var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth).FindAll(i => CanKill(i, Q));
             if (minionObj.Count == 0 || Q.CastIfHitchanceEquals(minionObj.First(), HitChance.High, PacketCast)) return;
         }
@@ -252,7 +250,7 @@ namespace BrianSharp.Plugin
 
         private void AutoQ()
         {
-            if (Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || Q.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+            if (Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || Q.CastOnBestTarget(0, PacketCast).IsCasted()) return;
         }
 
         private void KillSteal()
@@ -273,6 +271,11 @@ namespace BrianSharp.Plugin
                 var Target = R.GetTarget();
                 if (Target != null && CanKill(Target, R) && R.CastOnUnit(Target, PacketCast)) return;
             }
+        }
+
+        private Obj_AI_Minion Flag
+        {
+            get { return ObjectManager.Get<Obj_AI_Minion>().Find(i => i.IsAlly && Q.IsInRange(i) && i.Name == "Beacon"); }
         }
     }
 }

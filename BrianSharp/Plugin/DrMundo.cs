@@ -64,6 +64,11 @@ namespace BrianSharp.Plugin
                     AddItem(ClearMenu, "E", "Use E");
                     ChampMenu.AddSubMenu(ClearMenu);
                 }
+                var LastHitMenu = new Menu("Last Hit", "LastHit");
+                {
+                    AddItem(LastHitMenu, "Q", "Use Q");
+                    ChampMenu.AddSubMenu(LastHitMenu);
+                }
                 var MiscMenu = new Menu("Misc", "Misc");
                 {
                     var KillStealMenu = new Menu("Kill Steal", "KillSteal");
@@ -72,7 +77,6 @@ namespace BrianSharp.Plugin
                         AddItem(KillStealMenu, "Ignite", "Use Ignite");
                         MiscMenu.AddSubMenu(KillStealMenu);
                     }
-                    AddItem(MiscMenu, "QLastHit", "Use Q To Last Hit");
                     ChampMenu.AddSubMenu(MiscMenu);
                 }
                 var DrawMenu = new Menu("Draw", "Draw");
@@ -126,7 +130,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>(Mode, "Q") && Q.IsReady())
             {
                 var State = Q.CastOnBestTarget(0, PacketCast);
-                if (State == Spell.CastStates.SuccessfullyCasted)
+                if (State.IsCasted())
                 {
                     return;
                 }
@@ -186,14 +190,14 @@ namespace BrianSharp.Plugin
 
         private void LastHit()
         {
-            if (!GetValue<bool>("Misc", "QLastHit") || !Q.IsReady()) return;
+            if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady()) return;
             var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth).FindAll(i => CanKill(i, Q));
             if (minionObj.Count == 0 || Q.CastIfHitchanceEquals(minionObj.First(), HitChance.High, PacketCast)) return;
         }
 
         private void AutoQ()
         {
-            if (Player.HealthPercentage() < GetValue<Slider>("Harass", "AutoQHpA").Value || Q.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+            if (Player.HealthPercentage() < GetValue<Slider>("Harass", "AutoQHpA").Value || Q.CastOnBestTarget(0, PacketCast).IsCasted()) return;
         }
 
         private void KillSteal()

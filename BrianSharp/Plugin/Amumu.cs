@@ -165,7 +165,7 @@ namespace BrianSharp.Plugin
                     if (Target != null && !Orbwalk.InAutoAttackRange(Target))
                     {
                         var State = Q.Cast(Target, PacketCast);
-                        if (State == Spell.CastStates.SuccessfullyCasted)
+                        if (State.IsCasted())
                         {
                             return;
                         }

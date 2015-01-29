@@ -214,8 +214,8 @@ namespace BrianSharp.Plugin
                         }
                     }
                 }
-                if (GetValue<bool>(Mode, "W") && (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= GetValue<Slider>(Mode, "WHpA").Value)) && W.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
-                if (GetValue<bool>(Mode, "Q") && Q.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+                if (GetValue<bool>(Mode, "W") && (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= GetValue<Slider>(Mode, "WHpA").Value)) && W.CastOnBestTarget(0, PacketCast).IsCasted()) return;
+                if (GetValue<bool>(Mode, "Q") && Q.CastOnBestTarget(0, PacketCast).IsCasted()) return;
             }
         }
 
@@ -253,12 +253,12 @@ namespace BrianSharp.Plugin
                 var Obj = ObjectManager.Get<Obj_AI_Base>().FindAll(i => !(i is Obj_AI_Turret) && i.IsValidTarget(W.Range + i.BoundingRadius) && i.Distance(Game.CursorPos) < 200).MinOrDefault(i => i.Distance(Game.CursorPos));
                 if (Obj != null && W.CastOnUnit(Obj, PacketCast)) return;
             }
-            if (GetValue<bool>("Flee", "Q") && Q.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+            if (GetValue<bool>("Flee", "Q") && Q.CastOnBestTarget(0, PacketCast).IsCasted()) return;
         }
 
         private void AutoQ()
         {
-            if (Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || Q.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+            if (Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || Q.CastOnBestTarget(0, PacketCast).IsCasted()) return;
         }
 
         private void KillSteal()

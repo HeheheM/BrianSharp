@@ -3,6 +3,7 @@ using System.Linq;
 
 using LeagueSharp;
 using LeagueSharp.Common;
+using LeagueSharp.Common.Data;
 
 using BrianSharp.Common;
 using Orbwalk = BrianSharp.Common.Orbwalker;

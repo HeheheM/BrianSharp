@@ -158,8 +158,8 @@ namespace BrianSharp.Plugin
 
         private void NormalCombo(string Mode)
         {
-            if (GetValue<bool>(Mode, "Q") && (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= GetValue<Slider>(Mode, "QHpA").Value)) && Q2.CastOnBestTarget(0, PacketCast, true) == Spell.CastStates.SuccessfullyCasted) return;
-            if (GetValue<bool>(Mode, "E") && E.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+            if (GetValue<bool>(Mode, "Q") && (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= GetValue<Slider>(Mode, "QHpA").Value)) && Q2.CastOnBestTarget(0, PacketCast, true).IsCasted()) return;
+            if (GetValue<bool>(Mode, "E") && E.CastOnBestTarget(0, PacketCast).IsCasted()) return;
             if (Mode == "Combo")
             {
                 if (GetValue<bool>(Mode, "W") && W.IsReady())
@@ -223,12 +223,12 @@ namespace BrianSharp.Plugin
         private void Flee()
         {
             if (GetValue<bool>("Flee", "Q") && Q.IsReady() && Q.Cast(Game.CursorPos, PacketCast)) return;
-            if (GetValue<bool>("Flee", "E") && E.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+            if (GetValue<bool>("Flee", "E") && E.CastOnBestTarget(0, PacketCast).IsCasted()) return;
         }
 
         private void AutoE()
         {
-            if (Player.HealthPercentage() < GetValue<Slider>("Harass", "AutoEHpA").Value || E.CastOnBestTarget(0, PacketCast) == Spell.CastStates.SuccessfullyCasted) return;
+            if (Player.HealthPercentage() < GetValue<Slider>("Harass", "AutoEHpA").Value || E.CastOnBestTarget(0, PacketCast).IsCasted()) return;
         }
 
         private void KillSteal()
