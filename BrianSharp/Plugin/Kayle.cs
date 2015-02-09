@@ -1,29 +1,17 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
-using Color = System.Drawing.Color;
-
+using System.Drawing;
+using System.Linq;
+using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
-using SharpDX;
-
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp.Plugin
 {
-    class Kayle : Common.Helper
+    internal class Kayle : Helper
     {
-        private class RAntiItem
-        {
-            public float StartTick;
-            public float EndTick;
-            public RAntiItem(BuffInstance Buff)
-            {
-                StartTick = Game.Time + (Buff.EndTime - Buff.StartTime) - (R.Level * 0.5f + 1);
-                EndTick = Game.Time + (Buff.EndTime - Buff.StartTime);
-            }
-        }
-        private Dictionary<int, RAntiItem> RAntiDetected = new Dictionary<int, RAntiItem>();
+        private readonly Dictionary<int, RAntiItem> _rAntiDetected = new Dictionary<int, RAntiItem>();
 
         public Kayle()
         {
@@ -35,105 +23,93 @@ namespace BrianSharp.Plugin
             W.SetTargetted(0.3333f, float.MaxValue);
             R.SetTargetted(0.5f, float.MaxValue);
 
-            var ChampMenu = new Menu("Plugin", PlayerName + "_Plugin");
+            var champMenu = new Menu("Plugin", PlayerName + "_Plugin");
             {
-                var ComboMenu = new Menu("Combo", "Combo");
+                var comboMenu = new Menu("Combo", "Combo");
                 {
-                    var HealMenu = new Menu("Heal (W)", "Heal");
+                    var healMenu = new Menu("Heal (W)", "Heal");
                     {
-                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsAlly))
+                        foreach (var name in HeroManager.Allies.Select(MenuName))
                         {
-                            var Name = MenuName(Obj);
-                            AddItem(HealMenu, Name, Name);
-                            AddItem(HealMenu, Name + "HpU", "-> If Hp Under", 40);
+                            AddItem(healMenu, name, name);
+                            AddItem(healMenu, name + "HpU", "-> If Hp Under", 40);
                         }
-                        ComboMenu.AddSubMenu(HealMenu);
+                        comboMenu.AddSubMenu(healMenu);
                     }
-                    var SaveMenu = new Menu("Save (R)", "Save");
+                    var saveMenu = new Menu("Save (R)", "Save");
                     {
-                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsAlly))
+                        foreach (var name in HeroManager.Allies.Select(MenuName))
                         {
-                            var Name = MenuName(Obj);
-                            AddItem(SaveMenu, Name, Name);
-                            AddItem(SaveMenu, Name + "HpU", "-> If Hp Under", 30);
+                            AddItem(saveMenu, name, name);
+                            AddItem(saveMenu, name + "HpU", "-> If Hp Under", 30);
                         }
-                        ComboMenu.AddSubMenu(SaveMenu);
+                        comboMenu.AddSubMenu(saveMenu);
                     }
-                    var AntiMenu = new Menu("Anti (R)", "Anti");
+                    var antiMenu = new Menu("Anti (R)", "Anti");
                     {
-                        AddItem(AntiMenu, "Zed", "Zed");
-                        AddItem(AntiMenu, "Fizz", "Fizz");
-                        AddItem(AntiMenu, "Vlad", "Vladimir");
-                        AddItem(AntiMenu, "Karthus", "Karthus");
-                        ComboMenu.AddSubMenu(AntiMenu);
+                        AddItem(antiMenu, "Zed", "Zed");
+                        AddItem(antiMenu, "Fizz", "Fizz");
+                        AddItem(antiMenu, "Vlad", "Vladimir");
+                        AddItem(antiMenu, "Karthus", "Karthus");
+                        comboMenu.AddSubMenu(antiMenu);
                     }
-                    AddItem(ComboMenu, "Q", "Use Q");
-                    AddItem(ComboMenu, "W", "Use W");
-                    AddItem(ComboMenu, "WSpeed", "-> Speed");
-                    AddItem(ComboMenu, "WHeal", "-> Heal");
-                    AddItem(ComboMenu, "E", "Use E");
-                    AddItem(ComboMenu, "EAoE", "-> Focus Most AoE Target");
-                    AddItem(ComboMenu, "R", "Use R");
-                    AddItem(ComboMenu, "RSave", "-> Save");
-                    AddItem(ComboMenu, "RAnti", "-> Anti Dangerous Ultimate", new[] { "Off", "Self", "Ally", "Both" }, 3);
-                    ChampMenu.AddSubMenu(ComboMenu);
+                    AddItem(comboMenu, "Q", "Use Q");
+                    AddItem(comboMenu, "W", "Use W");
+                    AddItem(comboMenu, "WSpeed", "-> Speed");
+                    AddItem(comboMenu, "WHeal", "-> Heal");
+                    AddItem(comboMenu, "E", "Use E");
+                    AddItem(comboMenu, "EAoE", "-> Focus Most AoE Target");
+                    AddItem(comboMenu, "R", "Use R");
+                    AddItem(comboMenu, "RSave", "-> Save");
+                    AddItem(
+                        comboMenu, "RAnti", "-> Anti Dangerous Ultimate", new[] { "Off", "Self", "Ally", "Both" }, 3);
+                    champMenu.AddSubMenu(comboMenu);
                 }
-                var HarassMenu = new Menu("Harass", "Harass");
+                var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(HarassMenu, "AutoQ", "Use Q", "H", KeyBindType.Toggle);
-                    AddItem(HarassMenu, "AutoQMpA", "-> If Mp Above", 50);
-                    AddItem(HarassMenu, "Q", "Use Q");
-                    AddItem(HarassMenu, "E", "Use E");
-                    ChampMenu.AddSubMenu(HarassMenu);
+                    AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
+                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddItem(harassMenu, "Q", "Use Q");
+                    AddItem(harassMenu, "E", "Use E");
+                    champMenu.AddSubMenu(harassMenu);
                 }
-                var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
+                var clearMenu = new Menu("Clear", "Clear");
                 {
-                    var SmiteMob = new Menu("Smite Mob If Killable", "SmiteMob");
+                    AddSmiteMobMenu(clearMenu);
+                    AddItem(clearMenu, "Q", "Use Q");
+                    AddItem(clearMenu, "E", "Use E");
+                    champMenu.AddSubMenu(clearMenu);
+                }
+                var lastHitMenu = new Menu("Last Hit", "LastHit");
+                {
+                    AddItem(lastHitMenu, "Q", "Use Q");
+                    champMenu.AddSubMenu(lastHitMenu);
+                }
+                var fleeMenu = new Menu("Flee", "Flee");
+                {
+                    AddItem(fleeMenu, "Q", "Use Q To Slow Enemy");
+                    AddItem(fleeMenu, "W", "Use W");
+                    champMenu.AddSubMenu(fleeMenu);
+                }
+                var miscMenu = new Menu("Misc", "Misc");
+                {
+                    var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(SmiteMob, "Smite", "Use Smite");
-                        AddItem(SmiteMob, "Baron", "-> Baron Nashor");
-                        AddItem(SmiteMob, "Dragon", "-> Dragon");
-                        AddItem(SmiteMob, "Red", "-> Red Brambleback");
-                        AddItem(SmiteMob, "Blue", "-> Blue Sentinel");
-                        AddItem(SmiteMob, "Krug", "-> Ancient Krug");
-                        AddItem(SmiteMob, "Gromp", "-> Gromp");
-                        AddItem(SmiteMob, "Raptor", "-> Crimson Raptor");
-                        AddItem(SmiteMob, "Wolf", "-> Greater Murk Wolf");
-                        ClearMenu.AddSubMenu(SmiteMob);
+                        AddItem(killStealMenu, "Q", "Use Q");
+                        AddItem(killStealMenu, "Ignite", "Use Ignite");
+                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        miscMenu.AddSubMenu(killStealMenu);
                     }
-                    AddItem(ClearMenu, "Q", "Use Q");
-                    AddItem(ClearMenu, "E", "Use E");
-                    ChampMenu.AddSubMenu(ClearMenu);
+                    champMenu.AddSubMenu(miscMenu);
                 }
-                var LastHitMenu = new Menu("Last Hit", "LastHit");
+                var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(LastHitMenu, "Q", "Use Q");
-                    ChampMenu.AddSubMenu(LastHitMenu);
+                    AddItem(drawMenu, "Q", "Q Range", false);
+                    AddItem(drawMenu, "W", "W Range", false);
+                    AddItem(drawMenu, "R", "R Range", false);
+                    champMenu.AddSubMenu(drawMenu);
                 }
-                var FleeMenu = new Menu("Flee", "Flee");
-                {
-                    AddItem(FleeMenu, "Q", "Use Q To Slow Enemy");
-                    AddItem(FleeMenu, "W", "Use W");
-                    ChampMenu.AddSubMenu(FleeMenu);
-                }
-                var MiscMenu = new Menu("Misc", "Misc");
-                {
-                    var KillStealMenu = new Menu("Kill Steal", "KillSteal");
-                    {
-                        AddItem(KillStealMenu, "Q", "Use Q");
-                        AddItem(KillStealMenu, "Ignite", "Use Ignite");
-                        MiscMenu.AddSubMenu(KillStealMenu);
-                    }
-                    ChampMenu.AddSubMenu(MiscMenu);
-                }
-                var DrawMenu = new Menu("Draw", "Draw");
-                {
-                    AddItem(DrawMenu, "Q", "Q Range", false);
-                    AddItem(DrawMenu, "W", "W Range", false);
-                    AddItem(DrawMenu, "R", "R Range", false);
-                    ChampMenu.AddSubMenu(DrawMenu);
-                }
-                MainMenu.AddSubMenu(ChampMenu);
+                MainMenu.AddSubMenu(champMenu);
             }
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
@@ -142,151 +118,297 @@ namespace BrianSharp.Plugin
         private void OnGameUpdate(EventArgs args)
         {
             AntiDetect();
-            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling()) return;
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
+            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
-                NormalCombo(Orbwalk.CurrentMode.ToString());
+                return;
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear)
+            switch (Orbwalk.CurrentMode)
             {
-                LaneJungClear();
+                case Orbwalker.Mode.Combo:
+                    Fight("Combo");
+                    break;
+                case Orbwalker.Mode.Harass:
+                    Fight("Harass");
+                    break;
+                case Orbwalker.Mode.Clear:
+                    Clear();
+                    break;
+                case Orbwalker.Mode.LastHit:
+                    LastHit();
+                    break;
+                case Orbwalker.Mode.Flee:
+                    Flee();
+                    break;
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit)
-            {
-                LastHit();
-            }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee) Flee();
-            if (GetValue<KeyBind>("Harass", "AutoQ").Active) AutoQ();
+            AutoQ();
             KillSteal();
         }
 
         private void OnDraw(EventArgs args)
         {
-            if (Player.IsDead) return;
-            if (GetValue<bool>("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (GetValue<bool>("Draw", "W") && W.Level > 0) Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
-            if (GetValue<bool>("Draw", "R") && R.Level > 0) Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
-        }
-
-        private void NormalCombo(string Mode)
-        {
-            if (Mode == "Combo" && GetValue<bool>(Mode, "E") && GetValue<bool>(Mode, "EAoE") && Player.HasBuff("JudicatorRighteousFury"))
+            if (Player.IsDead)
             {
-                var Target = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => Orbwalk.InAutoAttackRange(i)).MaxOrDefault(i => i.CountEnemiesInRange(150));
-                if (Target != null) Orbwalk.ForcedTarget = Target;
+                return;
             }
-            else Orbwalk.ForcedTarget = null;
-            if (GetValue<bool>(Mode, "Q"))
+            if (GetValue<bool>("Draw", "Q") && Q.Level > 0)
             {
-                var Target = Q.GetTarget();
-                if (Target != null && ((Player.Distance(Target, true) > Math.Pow(Q.Range - 100, 2) && !Target.IsFacing(Player)) || Target.HealthPercentage() > 60) && Q.CastOnUnit(Target, PacketCast)) return;
+                Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
             }
-            if (GetValue<bool>(Mode, "E") && E.IsReady() && E.GetTarget() != null && E.Cast(PacketCast)) return;
-            if (Mode == "Combo")
+            if (GetValue<bool>("Draw", "W") && W.Level > 0)
             {
-                if (GetValue<bool>(Mode, "W") && W.IsReady())
-                {
-                    if (GetValue<bool>(Mode, "WHeal"))
-                    {
-                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsAlly && i.IsValidTarget(W.Range, false) && GetValue<bool>("Heal", MenuName(i)) && i.HealthPercentage() < GetValue<Slider>("Heal", MenuName(i) + "HpU").Value && !i.InFountain() && !i.IsRecalling() && i.CountEnemiesInRange(W.Range) > 0 && !i.HasBuff("JudicatorIntervention") && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
-                        if (Obj != null && W.CastOnUnit(Obj, PacketCast)) return;
-                    }
-                    if (GetValue<bool>(Mode, "WSpeed"))
-                    {
-                        var Target = Q.GetTarget(200);
-                        if (Target != null && !Target.IsFacing(Player) && (!Player.HasBuff("JudicatorRighteousFury") || (Player.HasBuff("JudicatorRighteousFury") && !Orbwalk.InAutoAttackRange(Target))) && (!GetValue<bool>(Mode, "Q") || (GetValue<bool>(Mode, "Q") && Q.IsReady() && !Q.IsInRange(Target))) && W.Cast(PacketCast)) return;
-                    }
-                }
-                if (GetValue<bool>(Mode, "R") && R.IsReady())
-                {
-                    if (GetValue<bool>(Mode, "RSave"))
-                    {
-                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsAlly && i.IsValidTarget(R.Range, false) && GetValue<bool>("Save", MenuName(i)) && i.HealthPercentage() < GetValue<Slider>("Save", MenuName(i) + "HpU").Value && !i.InFountain() && !i.IsRecalling() && i.CountEnemiesInRange(R.Range) > 0 && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
-                        if (Obj != null && R.CastOnUnit(Obj, PacketCast)) return;
-                    }
-                    if (GetValue<StringList>(Mode, "RAnti").SelectedIndex > 0)
-                    {
-                        var Obj = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsAlly && i.IsValidTarget(R.Range, false) && RAntiDetected.ContainsKey(i.NetworkId) && Game.Time > RAntiDetected[i.NetworkId].StartTick && !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
-                        if (Obj != null && R.CastOnUnit(Obj, PacketCast)) return;
-                    }
-                }
+                Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
+            }
+            if (GetValue<bool>("Draw", "R") && R.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
             }
         }
 
-        private void LaneJungClear()
+        private void Fight(string mode)
         {
-            var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-            if (minionObj.Count == 0) return;
+            if (mode == "Combo" && GetValue<bool>(mode, "E") && GetValue<bool>(mode, "EAoE") &&
+                Player.HasBuff("JudicatorRighteousFury"))
+            {
+                var target =
+                    HeroManager.Enemies.FindAll(i => Orbwalk.InAutoAttackRange(i))
+                        .MaxOrDefault(i => i.CountEnemiesInRange(150));
+                if (target != null)
+                {
+                    Orbwalk.ForcedTarget = target;
+                }
+            }
+            else
+            {
+                Orbwalk.ForcedTarget = null;
+            }
+            if (GetValue<bool>(mode, "Q"))
+            {
+                var target = Q.GetTarget();
+                if (target != null &&
+                    ((Player.Distance(target) > Q.Range - 100 && !target.IsFacing(Player)) ||
+                     target.HealthPercentage() > 60) && Q.CastOnUnit(target, PacketCast))
+                {
+                    return;
+                }
+            }
+            if (GetValue<bool>(mode, "E") && E.IsReady() && E.GetTarget() != null && E.Cast(PacketCast))
+            {
+                return;
+            }
+            if (mode != "Combo")
+            {
+                return;
+            }
+            if (GetValue<bool>(mode, "W") && W.IsReady())
+            {
+                if (GetValue<bool>(mode, "WHeal"))
+                {
+                    var obj =
+                        HeroManager.Allies.FindAll(
+                            i =>
+                                i.IsValidTarget(W.Range, false) && GetValue<bool>("Heal", MenuName(i)) &&
+                                i.HealthPercentage() < GetValue<Slider>("Heal", MenuName(i) + "HpU").Value &&
+                                !i.InFountain() && !i.IsRecalling() && i.CountEnemiesInRange(W.Range) > 0 &&
+                                !i.HasBuff("JudicatorIntervention") && !i.HasBuff("Undying Rage"))
+                            .MinOrDefault(i => i.Health);
+                    if (obj != null && W.CastOnUnit(obj, PacketCast))
+                    {
+                        return;
+                    }
+                }
+                if (GetValue<bool>(mode, "WSpeed"))
+                {
+                    var target = Q.GetTarget(200);
+                    if (target != null && !target.IsFacing(Player) &&
+                        (!Player.HasBuff("JudicatorRighteousFury") ||
+                         (Player.HasBuff("JudicatorRighteousFury") && !Orbwalk.InAutoAttackRange(target))) &&
+                        (!GetValue<bool>(mode, "Q") ||
+                         (GetValue<bool>(mode, "Q") && Q.IsReady() && !Q.IsInRange(target))) && W.Cast(PacketCast))
+                    {
+                        return;
+                    }
+                }
+            }
+            if (GetValue<bool>(mode, "R") && R.IsReady())
+            {
+                if (GetValue<bool>(mode, "RSave"))
+                {
+                    var obj =
+                        HeroManager.Allies.FindAll(
+                            i =>
+                                i.IsValidTarget(R.Range, false) && GetValue<bool>("Save", MenuName(i)) &&
+                                i.HealthPercentage() < GetValue<Slider>("Save", MenuName(i) + "HpU").Value &&
+                                !i.InFountain() && !i.IsRecalling() && i.CountEnemiesInRange(R.Range) > 0 &&
+                                !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
+                    if (obj != null && R.CastOnUnit(obj, PacketCast))
+                    {
+                        return;
+                    }
+                }
+                if (GetValue<StringList>(mode, "RAnti").SelectedIndex > 0)
+                {
+                    var obj =
+                        HeroManager.Allies.FindAll(
+                            i =>
+                                i.IsValidTarget(R.Range, false) && _rAntiDetected.ContainsKey(i.NetworkId) &&
+                                Game.Time > _rAntiDetected[i.NetworkId].StartTick && !i.HasBuff("Undying Rage"))
+                            .MinOrDefault(i => i.Health);
+                    if (obj != null)
+                    {
+                        R.CastOnUnit(obj, PacketCast);
+                    }
+                }
+            }
+        }
+
+        private void Clear()
+        {
+            SmiteMob();
+            var minionObj = MinionManager.GetMinions(
+                Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            if (minionObj.Count == 0)
+            {
+                return;
+            }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var Obj = minionObj.Find(i => CanKill(i, Q));
-                if (Obj == null) Obj = minionObj.Find(i => i.MaxHealth >= 1200);
-                if (Obj != null && Q.CastOnUnit(Obj, PacketCast)) return;
+                var obj = minionObj.Cast<Obj_AI_Minion>().Find(i => CanKill(i, Q)) ??
+                          minionObj.Find(i => i.MaxHealth >= 1200);
+                if (obj != null && Q.CastOnUnit(obj, PacketCast))
+                {
+                    return;
+                }
             }
-            if (GetValue<bool>("Clear", "E") && E.IsReady() && (minionObj.Count > 1 || minionObj.Count(i => i.MaxHealth >= 1200) > 0) && E.Cast(PacketCast)) return;
-            if (GetValue<bool>("SmiteMob", "Smite") && Smite.IsReady())
+            if (GetValue<bool>("Clear", "E") && E.IsReady() &&
+                (minionObj.Count > 1 || minionObj.Count(i => i.MaxHealth >= 1200) > 0))
             {
-                var Obj = minionObj.Find(i => i.Team == GameObjectTeam.Neutral && CanSmiteMob(i.Name));
-                if (Obj != null && CastSmite(Obj)) return;
+                E.Cast(PacketCast);
             }
         }
 
         private void LastHit()
         {
-            if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady()) return;
-            var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth).FindAll(i => CanKill(i, Q));
-            if (minionObj.Count == 0 || Q.CastOnUnit(minionObj.First(), PacketCast)) return;
+            if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady())
+            {
+                return;
+            }
+            var obj =
+                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                    .Cast<Obj_AI_Minion>()
+                    .Find(i => CanKill(i, Q));
+            if (obj == null)
+            {
+                return;
+            }
+            Q.CastOnUnit(obj, PacketCast);
         }
 
         private void Flee()
         {
-            if (GetValue<bool>("Flee", "W") && W.IsReady() && W.Cast(PacketCast)) return;
-            if (GetValue<bool>("Flee", "Q") && Q.CastOnBestTarget(0, PacketCast).IsCasted()) return;
+            if (GetValue<bool>("Flee", "W") && W.IsReady() && W.Cast(PacketCast))
+            {
+                return;
+            }
+            if (GetValue<bool>("Flee", "Q") && Q.IsReady())
+            {
+                Q.CastOnBestTarget(0, PacketCast);
+            }
         }
 
         private void AutoQ()
         {
-            if (Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || Q.CastOnBestTarget(0, PacketCast).IsCasted()) return;
+            if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
+                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+            {
+                return;
+            }
+            Q.CastOnBestTarget(0, PacketCast);
         }
 
         private void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
-                var Target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
-                if (Target != null && CastIgnite(Target)) return;
+                var target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
+                if (target != null && CastIgnite(target))
+                {
+                    return;
+                }
+            }
+            if (GetValue<bool>("KillSteal", "Smite") &&
+                (CurrentSmiteType == SmiteType.Blue || CurrentSmiteType == SmiteType.Red))
+            {
+                var target = TargetSelector.GetTarget(760, TargetSelector.DamageType.True);
+                if (target != null && CastSmite(target))
+                {
+                    return;
+                }
             }
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
-                var Target = Q.GetTarget();
-                if (Target != null && CanKill(Target, Q) && Q.CastOnUnit(Target, PacketCast)) return;
+                var target = Q.GetTarget();
+                if (target != null && CanKill(target, Q))
+                {
+                    Q.CastOnUnit(target, PacketCast);
+                }
             }
         }
 
         private void AntiDetect()
         {
-            if (Player.IsDead || GetValue<StringList>("Combo", "RAnti").SelectedIndex == 0 || R.Level == 0) return;
-            var Key = ObjectManager.Get<Obj_AI_Hero>().Find(i => i.IsAlly && i.IsValidTarget(float.MaxValue, false) && RAntiDetected.ContainsKey(i.NetworkId) && Game.Time > RAntiDetected[i.NetworkId].EndTick);
-            if (Key != null) RAntiDetected.Remove(Key.NetworkId);
-            foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsAlly && i.IsValidTarget(float.MaxValue, false) && !RAntiDetected.ContainsKey(i.NetworkId)))
+            if (Player.IsDead || GetValue<StringList>("Combo", "RAnti").SelectedIndex == 0 || R.Level == 0)
             {
-                if ((GetValue<StringList>("Combo", "RAnti").SelectedIndex == 1 && Obj.IsMe) || (GetValue<StringList>("Combo", "RAnti").SelectedIndex == 2 && !Obj.IsMe) || GetValue<StringList>("Combo", "RAnti").SelectedIndex == 3)
+                return;
+            }
+            var key =
+                HeroManager.Allies.Find(
+                    i => _rAntiDetected.ContainsKey(i.NetworkId) && Game.Time > _rAntiDetected[i.NetworkId].EndTick);
+            if (key != null)
+            {
+                _rAntiDetected.Remove(key.NetworkId);
+            }
+            foreach (var obj in
+                HeroManager.Allies.FindAll(i => !i.IsDead && !_rAntiDetected.ContainsKey(i.NetworkId)))
+            {
+                if ((GetValue<StringList>("Combo", "RAnti").SelectedIndex == 1 && obj.IsMe) ||
+                    (GetValue<StringList>("Combo", "RAnti").SelectedIndex == 2 && !obj.IsMe) ||
+                    GetValue<StringList>("Combo", "RAnti").SelectedIndex == 3)
                 {
-                    foreach (var Buff in Obj.Buffs)
+                    foreach (var buff in obj.Buffs)
                     {
-                        if ((Buff.DisplayName == "ZedUltExecute" && GetValue<bool>("Anti", "Zed")) || (Buff.DisplayName == "FizzChurnTheWatersCling" && GetValue<bool>("Anti", "Fizz")) || (Buff.DisplayName == "VladimirHemoplagueDebuff" && GetValue<bool>("Anti", "Vlad")))
+                        if ((buff.DisplayName == "ZedUltExecute" && GetValue<bool>("Anti", "Zed")) ||
+                            (buff.DisplayName == "FizzChurnTheWatersCling" && GetValue<bool>("Anti", "Fizz")) ||
+                            (buff.DisplayName == "VladimirHemoplagueDebuff" && GetValue<bool>("Anti", "Vlad")))
                         {
-                            RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
+                            _rAntiDetected.Add(obj.NetworkId, new RAntiItem(buff));
                         }
-                        else if (Buff.DisplayName == "KarthusFallenOne" && GetValue<bool>("Anti", "Karthus") && Obj.Health <= ((Obj_AI_Hero)Buff.Caster).GetSpellDamage(Obj, SpellSlot.R) + Obj.Health * 0.2f && Obj.CountEnemiesInRange(R.Range) > 0) RAntiDetected.Add(Obj.NetworkId, new RAntiItem(Buff));
+                        else if (buff.DisplayName == "KarthusFallenOne" && GetValue<bool>("Anti", "Karthus") &&
+                                 obj.Health <=
+                                 ((Obj_AI_Hero) buff.Caster).GetSpellDamage(obj, SpellSlot.R) + obj.Health * 0.2f &&
+                                 obj.CountEnemiesInRange(R.Range) > 0)
+                        {
+                            _rAntiDetected.Add(obj.NetworkId, new RAntiItem(buff));
+                        }
                     }
                 }
             }
         }
 
-        private string MenuName(Obj_AI_Hero Obj)
+        private string MenuName(Obj_AI_Hero obj)
         {
-            return Obj.IsMe ? "Self" : Obj.ChampionName;
+            return obj.IsMe ? "Self" : obj.ChampionName;
+        }
+
+        private class RAntiItem
+        {
+            public readonly float EndTick;
+            public readonly float StartTick;
+
+            public RAntiItem(BuffInstance buff)
+            {
+                StartTick = Game.Time + (buff.EndTime - buff.StartTime) - (R.Level * 0.5f + 1);
+                EndTick = Game.Time + (buff.EndTime - buff.StartTime);
+            }
         }
     }
 }

@@ -8,37 +8,40 @@ using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp.Plugin
 {
-    internal class DrMundo : Helper
+    internal class Warwick : Helper
     {
-        public DrMundo()
+        public Warwick()
         {
-            Q = new Spell(SpellSlot.Q, 1050);
-            W = new Spell(SpellSlot.W, 325);
-            E = new Spell(SpellSlot.E);
-            R = new Spell(SpellSlot.R);
-            Q.SetSkillshot(0.25f, 60, 2000, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 413);
+            W = new Spell(SpellSlot.W, 1250);
+            R = new Spell(SpellSlot.R, 704, TargetSelector.DamageType.Magical);
+            Q.SetTargetted(0.5f, float.MaxValue);
+            R.SetTargetted(0.5f, float.MaxValue);
 
             var champMenu = new Menu("Plugin", PlayerName + "_Plugin");
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
+                    var lockMenu = new Menu("Lock (R)", "Lock");
+                    {
+                        foreach (var obj in HeroManager.Enemies)
+                        {
+                            AddItem(lockMenu, obj.ChampionName, obj.ChampionName);
+                        }
+                        comboMenu.AddSubMenu(lockMenu);
+                    }
                     AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "QCol", "-> Smite Collision");
                     AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "WHpA", "-> If Hp Above", 20);
-                    AddItem(comboMenu, "E", "Use E");
                     AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RHpU", "-> If Hp Under", 50);
+                    AddItem(comboMenu, "RSmite", "-> Use Red Smite");
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
                     AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddItem(harassMenu, "AutoQHpA", "-> If Hp Above", 30);
+                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
                     AddItem(harassMenu, "Q", "Use Q");
                     AddItem(harassMenu, "W", "Use W");
-                    AddItem(harassMenu, "WHpA", "-> If Hp Above", 20);
-                    AddItem(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
@@ -46,8 +49,6 @@ namespace BrianSharp.Plugin
                     AddSmiteMobMenu(clearMenu);
                     AddItem(clearMenu, "Q", "Use Q");
                     AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "WHpA", "-> If Hp Above", 20);
-                    AddItem(clearMenu, "E", "Use E");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
@@ -60,16 +61,18 @@ namespace BrianSharp.Plugin
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
                         AddItem(killStealMenu, "Q", "Use Q");
+                        AddItem(killStealMenu, "R", "Use R");
                         AddItem(killStealMenu, "Ignite", "Use Ignite");
                         AddItem(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
+                    AddItem(miscMenu, "RTower", "Use R If Enemy Under Tower");
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
                     AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "W", "W Range", false);
+                    AddItem(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -102,6 +105,7 @@ namespace BrianSharp.Plugin
             }
             AutoQ();
             KillSteal();
+            AutoRUnderTower();
         }
 
         private void OnDraw(EventArgs args)
@@ -114,122 +118,73 @@ namespace BrianSharp.Plugin
             {
                 Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
             }
-            if (GetValue<bool>("Draw", "W") && W.Level > 0)
+            if (GetValue<bool>("Draw", "R") && R.Level > 0)
             {
-                Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
+                Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
             }
         }
 
         private void OnAttack(AttackableUnit target)
         {
-            if (!E.IsReady())
+            if (!W.IsReady())
             {
                 return;
             }
-            if ((((Orbwalk.CurrentMode == Orbwalker.Mode.Combo || Orbwalk.CurrentMode == Orbwalker.Mode.Harass) &&
-                  target is Obj_AI_Hero) || (Orbwalk.CurrentMode == Orbwalker.Mode.Clear && target is Obj_AI_Minion)) &&
-                GetValue<bool>(Orbwalk.CurrentMode.ToString(), "E"))
+            if (((Orbwalk.CurrentMode == Orbwalker.Mode.Combo || Orbwalk.CurrentMode == Orbwalker.Mode.Harass) &&
+                 GetValue<bool>(Orbwalk.CurrentMode.ToString(), "W") && target is Obj_AI_Hero) ||
+                (Orbwalk.CurrentMode == Orbwalker.Mode.Clear && GetValue<bool>("Clear", "W") && target is Obj_AI_Minion))
             {
-                E.Cast(PacketCast);
+                W.Cast(PacketCast);
             }
         }
 
         private void Fight(string mode)
         {
-            if (GetValue<bool>(mode, "W") && W.IsReady() && Player.HasBuff("BurningAgony") && W.GetTarget(175) == null &&
-                W.Cast(PacketCast))
+            if (GetValue<bool>(mode, "Q") && Q.CastOnBestTarget(0, PacketCast).IsCasted())
             {
                 return;
             }
-            if (GetValue<bool>(mode, "Q") && Q.IsReady())
+            if (mode != "Combo")
             {
-                var state = Q.CastOnBestTarget(0, PacketCast);
-                if (state.IsCasted())
+                return;
+            }
+            if (GetValue<bool>(mode, "R") && R.IsReady())
+            {
+                var target = R.GetTarget(0, HeroManager.Enemies.FindAll(i => !GetValue<bool>("Lock", i.ChampionName)));
+                if (target != null)
                 {
-                    return;
-                }
-                if (mode == "Combo" && state == Spell.CastStates.Collision && GetValue<bool>(mode, "QCol"))
-                {
-                    var pred = Q.GetPrediction(Q.GetTarget());
-                    if (pred.CollisionObjects.FindAll(i => i.IsMinion).Count == 1 &&
-                        CastSmite(pred.CollisionObjects.First()) && Q.Cast(pred.CastPosition, PacketCast))
+                    if (GetValue<bool>(mode, "RSmite") && CurrentSmiteType == SmiteType.Red)
                     {
-                        return;
+                        CastSmite(target, false);
                     }
+                    R.CastOnUnit(target, PacketCast);
                 }
             }
-            if (GetValue<bool>(mode, "W") && W.IsReady())
+            if (GetValue<bool>(mode, "W") && W.IsReady() &&
+                HeroManager.Allies.Any(
+                    i => !i.IsMe && i.IsValidTarget(W.Range, false) && Orbwalking.IsAutoAttack(i.LastCastedSpellName())))
             {
-                if (Player.HealthPercentage() >= GetValue<Slider>(mode, "WHpA").Value)
-                {
-                    if (W.GetTarget(60) != null)
-                    {
-                        if (!Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
-                        {
-                            return;
-                        }
-                    }
-                    else if (Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
-                    {
-                        return;
-                    }
-                }
-                else if (Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
-                {
-                    return;
-                }
-            }
-            if (mode == "Combo" && GetValue<bool>(mode, "R") &&
-                Player.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value && !Player.InFountain() &&
-                Q.GetTarget() != null)
-            {
-                R.Cast(PacketCast);
+                W.Cast(PacketCast);
             }
         }
 
         private void Clear()
         {
             SmiteMob();
+            if (!GetValue<bool>("Clear", "Q") || !Q.IsReady())
+            {
+                return;
+            }
             var minionObj = MinionManager.GetMinions(
                 Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (minionObj.Count == 0)
             {
-                if (GetValue<bool>("Clear", "W") && W.IsReady() && Player.HasBuff("BurningAgony"))
-                {
-                    W.Cast(PacketCast);
-                }
                 return;
             }
-            if (GetValue<bool>("Clear", "W") && W.IsReady())
+            var obj = minionObj.Cast<Obj_AI_Minion>().Find(i => CanKill(i, Q)) ?? minionObj.MinOrDefault(i => i.Health);
+            if (obj != null)
             {
-                if (Player.HealthPercentage() >= GetValue<Slider>("Clear", "WHpA").Value)
-                {
-                    if (minionObj.Count(i => W.IsInRange(i, W.Range + 60)) > 1 ||
-                        minionObj.Count(i => i.MaxHealth >= 1200 && W.IsInRange(i, W.Range + 60)) > 0)
-                    {
-                        if (!Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
-                        {
-                            return;
-                        }
-                    }
-                    else if (Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
-                    {
-                        return;
-                    }
-                }
-                else if (Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
-                {
-                    return;
-                }
-            }
-            if (GetValue<bool>("Clear", "Q") && Q.IsReady())
-            {
-                var obj = minionObj.Cast<Obj_AI_Minion>().Find(i => CanKill(i, Q)) ??
-                          minionObj.Find(i => i.MaxHealth >= 1200);
-                if (obj != null)
-                {
-                    Q.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
-                }
+                Q.CastOnUnit(obj, PacketCast);
             }
         }
 
@@ -247,13 +202,13 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
+            Q.CastOnUnit(obj, PacketCast);
         }
 
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.HealthPercentage() < GetValue<Slider>("Harass", "AutoQHpA").Value || !Q.IsReady())
+                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
             {
                 return;
             }
@@ -282,10 +237,33 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var target = Q.GetTarget();
-                if (target != null && CanKill(target, Q))
+                if (target != null && CanKill(target, Q) && Q.CastOnUnit(target, PacketCast))
                 {
-                    Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
+                    return;
                 }
+            }
+            if (GetValue<bool>("KillSteal", "R") && R.IsReady())
+            {
+                var target = R.GetTarget();
+                if (target != null && CanKill(target, R))
+                {
+                    R.CastOnUnit(target, PacketCast);
+                }
+            }
+        }
+
+        private void AutoRUnderTower()
+        {
+            if (!GetValue<bool>("Misc", "RTower") || !R.IsReady())
+            {
+                return;
+            }
+            var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range))
+                .MinOrDefault(i => i.Distance(Player));
+            var tower = ObjectManager.Get<Obj_AI_Turret>().Find(i => i.IsAlly && !i.IsDead && i.Distance(Player) <= 950);
+            if (target != null && tower != null && target.Distance(tower) <= 950)
+            {
+                R.CastOnUnit(target, PacketCast);
             }
         }
     }

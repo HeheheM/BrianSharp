@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Collections.Generic;
-
+﻿using System.Linq;
 using LeagueSharp;
 using LeagueSharp.Common;
 using LeagueSharp.Common.Data;
@@ -9,116 +6,219 @@ using SharpDX;
 
 namespace BrianSharp.Common
 {
-    class Helper : Program
+    internal class Helper : Program
     {
-        #region Menu
-        public static MenuItem AddItem(Menu SubMenu, string Item, string Display, string Key, KeyBindType Type = KeyBindType.Press, bool State = false)
+        public enum SmiteType
         {
-            return SubMenu.AddItem(new MenuItem("_" + SubMenu.Name + "_" + Item, Display, true).SetValue(new KeyBind(Key.ToCharArray()[0], Type, State)));
+            Grey,
+            Purple,
+            Red,
+            Blue,
+            None
         }
 
-        public static MenuItem AddItem(Menu SubMenu, string Item, string Display, bool State = true)
+        public static SmiteType CurrentSmiteType
         {
-            return SubMenu.AddItem(new MenuItem("_" + SubMenu.Name + "_" + Item, Display, true).SetValue(State));
+            get
+            {
+                if (Player.GetSpellSlot("s5_summonersmitequick").IsReady())
+                {
+                    return SmiteType.Grey;
+                }
+                if (Player.GetSpellSlot("itemsmiteaoe").IsReady())
+                {
+                    return SmiteType.Purple;
+                }
+                if (Player.GetSpellSlot("s5_summonersmiteduel").IsReady())
+                {
+                    return SmiteType.Red;
+                }
+                return Player.GetSpellSlot("s5_summonersmiteplayerganker").IsReady() ? SmiteType.Blue : SmiteType.None;
+            }
         }
-
-        public static MenuItem AddItem(Menu SubMenu, string Item, string Display, int Cur, int Min = 1, int Max = 100)
-        {
-            return SubMenu.AddItem(new MenuItem("_" + SubMenu.Name + "_" + Item, Display, true).SetValue(new Slider(Cur, Min, Max)));
-        }
-
-        public static MenuItem AddItem(Menu SubMenu, string Item, string Display, string[] Text, int DefaultIndex = 0)
-        {
-            return SubMenu.AddItem(new MenuItem("_" + SubMenu.Name + "_" + Item, Display, true).SetValue(new StringList(Text, DefaultIndex)));
-        }
-
-        public static bool ItemActive(string Item)
-        {
-            return MainMenu.Item("_OW_" + Item + "_Key", true).GetValue<KeyBind>().Active;
-        }
-
-        public static T GetValue<T>(string SubMenu, string Item)
-        {
-            return MainMenu.Item("_" + SubMenu + "_" + Item, true).GetValue<T>();
-        }
-
-        public static MenuItem GetItem(string SubMenu, string Item)
-        {
-            return MainMenu.Item("_" + SubMenu + "_" + Item, true);
-        }
-        #endregion
 
         public static bool PacketCast
         {
             get { return GetValue<bool>("Misc", "UsePacket"); }
         }
 
-        public static void CustomOrbwalk(Obj_AI_Base Target)
+        public static void CustomOrbwalk(Obj_AI_Base target)
         {
-            Orbwalker.Orbwalk(Orbwalker.InAutoAttackRange(Target) ? Target : null);
+            Orbwalker.Orbwalk(Orbwalker.InAutoAttackRange(target) ? target : null);
         }
 
-        public static bool CanKill(Obj_AI_Base Target, Spell Skill, double Health, double SubDmg)
+        public static bool CanKill(Obj_AI_Base target, Spell skill, double health, double subDmg)
         {
-            return Skill.GetHealthPrediction(Target) - Health + 5 <= SubDmg;
+            return skill.GetHealthPrediction(target) - health + 5 <= subDmg;
         }
 
-        public static bool CanKill(Obj_AI_Base Target, Spell Skill, double SubDmg)
+        public static bool CanKill(Obj_AI_Base target, Spell skill, double subDmg)
         {
-            return CanKill(Target, Skill, 0, SubDmg);
+            return CanKill(target, skill, 0, subDmg);
         }
 
-        public static bool CanKill(Obj_AI_Base Target, Spell Skill, int Stage = 0, double SubDmg = 0)
+        public static bool CanKill(Obj_AI_Base target, Spell skill, int stage = 0, double subDmg = 0)
         {
-            return Skill.GetHealthPrediction(Target) + 5 <= (SubDmg > 0 ? SubDmg : Skill.GetDamage(Target, Stage));
+            return skill.GetHealthPrediction(target) + 5 <= (subDmg > 0 ? subDmg : skill.GetDamage(target, stage));
         }
 
-        public static bool CastFlash(Vector3 Pos)
+        public static bool CastFlash(Vector3 pos)
         {
-            if (!Flash.IsReady() || !Pos.IsValid()) return false;
-            return Player.Spellbook.CastSpell(Flash, Pos);
+            return Flash.IsReady() && pos.IsValid() && Player.Spellbook.CastSpell(Flash, pos);
         }
 
-        public static bool CastSmite(Obj_AI_Base Target, bool Killable = true)
+        public static bool CastSmite(Obj_AI_Base target, bool killable = true)
         {
-            if (!Smite.IsReady() || !Target.IsValidTarget(760) || (Killable && Target.Health > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Smite))) return false;
-            return Player.Spellbook.CastSpell(Smite, Target);
+            return Smite.IsReady() && target.IsValidTarget(760) &&
+                   (!killable || target.Health <= Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Smite)) &&
+                   Player.Spellbook.CastSpell(Smite, target);
         }
 
-        public static bool CastIgnite(Obj_AI_Hero Target)
+        public static bool CastIgnite(Obj_AI_Hero target)
         {
-            if (!Ignite.IsReady() || !Target.IsValidTarget(600) || Target.Health + 5 > Player.GetSummonerSpellDamage(Target, Damage.SummonerSpell.Ignite)) return false;
-            return Player.Spellbook.CastSpell(Ignite, Target);
+            return Ignite.IsReady() && target.IsValidTarget(600) &&
+                   target.Health + 5 < Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Ignite) &&
+                   Player.Spellbook.CastSpell(Ignite, target);
         }
 
         public static InventorySlot GetWardSlot()
         {
-            InventorySlot Ward = null;
-            int[] WardPink = { 3362, 2043 };
-            int[] WardGreen = { 3340, 3361, 2049, 2045, 2044 };
-            if (GetValue<bool>("Flee", "PinkWard") && WardPink.Any(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.Find(i => i.Id == (ItemId)WardPink.Find(a => Items.CanUseItem(a)));
-            if (WardGreen.Any(i => Items.CanUseItem(i))) Ward = Player.InventoryItems.Find(i => i.Id == (ItemId)WardGreen.Find(a => Items.CanUseItem(a)));
-            return Ward;
+            InventorySlot ward = null;
+            int[] wardPink = { 3362, 2043 };
+            int[] wardGreen = { 3340, 3361, 2049, 2045, 2044 };
+            if (GetValue<bool>("Flee", "PinkWard") && wardPink.Any(Items.CanUseItem))
+            {
+                ward = Player.InventoryItems.Find(i => i.Id == (ItemId) wardPink.Find(Items.CanUseItem));
+            }
+            if (wardGreen.Any(Items.CanUseItem))
+            {
+                ward = Player.InventoryItems.Find(i => i.Id == (ItemId) wardGreen.Find(Items.CanUseItem));
+            }
+            return ward;
         }
 
         public static float GetWardRange()
         {
-            int[] TricketWard = { 3340, 3361, 3362 };
-            return 600 * ((Player.HasMastery(MasteryData.Scout) && GetWardSlot() != null && TricketWard.Contains((int)GetWardSlot().Id)) ? 1.15f : 1);
+            return 600 *
+                   (Player.HasMastery(MasteryData.Scout) && GetWardSlot() != null &&
+                    new[] { 3340, 3361, 3362 }.Contains((int) GetWardSlot().Id)
+                       ? 1.15f
+                       : 1);
         }
 
-        public static bool CanSmiteMob(string Name)
+        public static void SmiteMob()
         {
-            if (GetValue<bool>("SmiteMob", "Baron") && Name.StartsWith("SRU_Baron")) return true;
-            if (GetValue<bool>("SmiteMob", "Dragon") && Name.StartsWith("SRU_Dragon")) return true;
-            if (Name.Contains("Mini")) return false;
-            if (GetValue<bool>("SmiteMob", "Red") && Name.StartsWith("SRU_Red")) return true;
-            if (GetValue<bool>("SmiteMob", "Blue") && Name.StartsWith("SRU_Blue")) return true;
-            if (GetValue<bool>("SmiteMob", "Krug") && Name.StartsWith("SRU_Krug")) return true;
-            if (GetValue<bool>("SmiteMob", "Gromp") && Name.StartsWith("SRU_Gromp")) return true;
-            if (GetValue<bool>("SmiteMob", "Raptor") && Name.StartsWith("SRU_Razorbeak")) return true;
-            if (GetValue<bool>("SmiteMob", "Wolf") && Name.StartsWith("SRU_Murkwolf")) return true;
-            return false;
+            if (!GetValue<bool>("SmiteMob", "Smite") || !Smite.IsReady())
+            {
+                return;
+            }
+            var obj =
+                MinionManager.GetMinions(760, MinionTypes.All, MinionTeam.Neutral, MinionOrderTypes.MaxHealth)
+                    .Find(i => CanSmiteMob(i.Name));
+            if (obj == null)
+            {
+                return;
+            }
+            CastSmite(obj);
         }
+
+        private static bool CanSmiteMob(string name)
+        {
+            if (GetValue<bool>("SmiteMob", "Baron") && name.StartsWith("SRU_Baron"))
+            {
+                return true;
+            }
+            if (GetValue<bool>("SmiteMob", "Dragon") && name.StartsWith("SRU_Dragon"))
+            {
+                return true;
+            }
+            if (name.Contains("Mini"))
+            {
+                return false;
+            }
+            if (GetValue<bool>("SmiteMob", "Red") && name.StartsWith("SRU_Red"))
+            {
+                return true;
+            }
+            if (GetValue<bool>("SmiteMob", "Blue") && name.StartsWith("SRU_Blue"))
+            {
+                return true;
+            }
+            if (GetValue<bool>("SmiteMob", "Krug") && name.StartsWith("SRU_Krug"))
+            {
+                return true;
+            }
+            if (GetValue<bool>("SmiteMob", "Gromp") && name.StartsWith("SRU_Gromp"))
+            {
+                return true;
+            }
+            if (GetValue<bool>("SmiteMob", "Raptor") && name.StartsWith("SRU_Razorbeak"))
+            {
+                return true;
+            }
+            return GetValue<bool>("SmiteMob", "Wolf") && name.StartsWith("SRU_Murkwolf");
+        }
+
+        public static void AddSmiteMobMenu(Menu menu)
+        {
+            var smiteMob = new Menu("Smite Mob If Killable", "SmiteMob");
+            AddItem(smiteMob, "Smite", "Use Smite");
+            AddItem(smiteMob, "Baron", "-> Baron Nashor");
+            AddItem(smiteMob, "Dragon", "-> Dragon");
+            AddItem(smiteMob, "Red", "-> Red Brambleback");
+            AddItem(smiteMob, "Blue", "-> Blue Sentinel");
+            AddItem(smiteMob, "Krug", "-> Ancient Krug");
+            AddItem(smiteMob, "Gromp", "-> Gromp");
+            AddItem(smiteMob, "Raptor", "-> Crimson Raptor");
+            AddItem(smiteMob, "Wolf", "-> Greater Murk Wolf");
+            menu.AddSubMenu(smiteMob);
+        }
+
+        #region Menu
+
+        public static MenuItem AddItem(Menu subMenu,
+            string item,
+            string display,
+            string key,
+            KeyBindType type = KeyBindType.Press,
+            bool state = false)
+        {
+            return
+                subMenu.AddItem(
+                    new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(
+                        new KeyBind(key.ToCharArray()[0], type, state)));
+        }
+
+        public static MenuItem AddItem(Menu subMenu, string item, string display, bool state = true)
+        {
+            return subMenu.AddItem(new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(state));
+        }
+
+        public static MenuItem AddItem(Menu subMenu, string item, string display, int cur, int min = 1, int max = 100)
+        {
+            return
+                subMenu.AddItem(
+                    new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(new Slider(cur, min, max)));
+        }
+
+        public static MenuItem AddItem(Menu subMenu, string item, string display, string[] text, int defaultIndex = 0)
+        {
+            return
+                subMenu.AddItem(
+                    new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(
+                        new StringList(text, defaultIndex)));
+        }
+
+        public static T GetValue<T>(string subMenu, string item)
+        {
+            return MainMenu.Item("_" + subMenu + "_" + item, true).GetValue<T>();
+        }
+
+        public static MenuItem GetItem(string subMenu, string item)
+        {
+            return MainMenu.Item("_" + subMenu + "_" + item, true);
+        }
+
+        #endregion
     }
 }

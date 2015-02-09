@@ -1,23 +1,21 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
-using Color = System.Drawing.Color;
-
+using System.Linq;
+using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
-using LeagueSharp.Common.Data;
 using SharpDX;
-
+using Color = System.Drawing.Color;
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp.Plugin
 {
-    class Lucian : Common.Helper
+    internal class Lucian : Helper
     {
-        private bool QCasted = false, WCasted = false, ECasted = false;
-        private Obj_AI_Hero RTarget = null;
-        private Vector3 REndPos = default(Vector3);
-        private bool RKillable = false;
+        private bool _qCasted, _wCasted, _eCasted;
+        private Vector3 _rEndPos;
+        private bool _rKillable;
+        private Obj_AI_Hero _rTarget;
 
         public Lucian()
         {
@@ -31,268 +29,377 @@ namespace BrianSharp.Plugin
             W.SetSkillshot(0, 80, 500, true, SkillshotType.SkillshotLine);
             R.SetSkillshot(0, 60, 500, true, SkillshotType.SkillshotLine);
 
-            var ChampMenu = new Menu("Plugin", PlayerName + "_Plugin");
+            var champMenu = new Menu("Plugin", PlayerName + "_Plugin");
             {
-                var ComboMenu = new Menu("Combo", "Combo");
+                var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(ComboMenu, "P", "Use Passive");
-                    AddItem(ComboMenu, "PSave", "-> Always Save", false);
-                    AddItem(ComboMenu, "Q", "Use Q");
-                    AddItem(ComboMenu, "QExtend", "-> Extend");
-                    AddItem(ComboMenu, "W", "Use W");
-                    AddItem(ComboMenu, "WPred", "-> Prediction", false);
-                    AddItem(ComboMenu, "E", "Use E");
-                    AddItem(ComboMenu, "EGap", "-> Gap Closer");
-                    AddItem(ComboMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 0, 1000);
-                    AddItem(ComboMenu, "EMode", "-> Mode", new[] { "Safe", "Mouse", "Chase" });
-                    AddItem(ComboMenu, "EModeKey", "--> Key Switch", "Z", KeyBindType.Toggle).ValueChanged += ComboEModeChanged;
-                    AddItem(ComboMenu, "EModeDraw", "--> Draw Text", false);
-                    AddItem(ComboMenu, "R", "Use R If Killable");
-                    AddItem(ComboMenu, "RItem", "-> Use Youmuu For More Damage");
-                    ChampMenu.AddSubMenu(ComboMenu);
+                    AddItem(comboMenu, "P", "Use Passive");
+                    AddItem(comboMenu, "PSave", "-> Always Save", false);
+                    AddItem(comboMenu, "Q", "Use Q");
+                    AddItem(comboMenu, "QExtend", "-> Extend");
+                    AddItem(comboMenu, "W", "Use W");
+                    AddItem(comboMenu, "WPred", "-> Prediction", false);
+                    AddItem(comboMenu, "E", "Use E");
+                    AddItem(comboMenu, "EGap", "-> Gap Closer");
+                    AddItem(comboMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 0, 1000);
+                    AddItem(comboMenu, "EMode", "-> Mode", new[] { "Safe", "Mouse", "Chase" });
+                    AddItem(comboMenu, "EModeKey", "--> Key Switch", "Z", KeyBindType.Toggle).ValueChanged +=
+                        ComboEModeChanged;
+                    AddItem(comboMenu, "EModeDraw", "--> Draw Text", false);
+                    AddItem(comboMenu, "R", "Use R If Killable");
+                    AddItem(comboMenu, "RItem", "-> Use Youmuu For More Damage");
+                    champMenu.AddSubMenu(comboMenu);
                 }
-                var HarassMenu = new Menu("Harass", "Harass");
+                var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(HarassMenu, "AutoQ", "Use Q Extend", "H", KeyBindType.Toggle);
-                    AddItem(HarassMenu, "AutoQMpA", "-> If Mp Above", 50);
-                    AddItem(HarassMenu, "P", "Use Passive");
-                    AddItem(HarassMenu, "PSave", "-> Always Save", false);
-                    AddItem(HarassMenu, "Q", "Use Q");
-                    AddItem(HarassMenu, "W", "Use W");
-                    AddItem(HarassMenu, "E", "Use E");
-                    AddItem(HarassMenu, "EHpA", "-> If Hp Above", 20);
-                    ChampMenu.AddSubMenu(HarassMenu);
+                    AddItem(harassMenu, "AutoQ", "Auto Q (Only Extend)", "H", KeyBindType.Toggle);
+                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddItem(harassMenu, "P", "Use Passive");
+                    AddItem(harassMenu, "PSave", "-> Always Save", false);
+                    AddItem(harassMenu, "Q", "Use Q");
+                    AddItem(harassMenu, "W", "Use W");
+                    AddItem(harassMenu, "E", "Use E");
+                    AddItem(harassMenu, "EHpA", "-> If Hp Above", 20);
+                    champMenu.AddSubMenu(harassMenu);
                 }
-                var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
+                var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddItem(ClearMenu, "Q", "Use Q");
-                    AddItem(ClearMenu, "W", "Use W");
-                    AddItem(ClearMenu, "E", "Use E");
-                    AddItem(ClearMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 0, 1000);
-                    ChampMenu.AddSubMenu(ClearMenu);
+                    AddItem(clearMenu, "Q", "Use Q");
+                    AddItem(clearMenu, "W", "Use W");
+                    AddItem(clearMenu, "E", "Use E");
+                    AddItem(clearMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 0, 1000);
+                    champMenu.AddSubMenu(clearMenu);
                 }
-                var FleeMenu = new Menu("Flee", "Flee");
+                var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(FleeMenu, "E", "Use E");
-                    ChampMenu.AddSubMenu(FleeMenu);
+                    AddItem(fleeMenu, "E", "Use E");
+                    champMenu.AddSubMenu(fleeMenu);
                 }
-                var MiscMenu = new Menu("Misc", "Misc");
+                var miscMenu = new Menu("Misc", "Misc");
                 {
-                    var KillStealMenu = new Menu("Kill Steal", "KillSteal");
+                    var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(KillStealMenu, "RStop", "Stop R For Kill Steal");
-                        AddItem(KillStealMenu, "Q", "Use Q");
-                        AddItem(KillStealMenu, "W", "Use W");
-                        AddItem(KillStealMenu, "Ignite", "Use Ignite");
-                        MiscMenu.AddSubMenu(KillStealMenu);
+                        AddItem(killStealMenu, "RStop", "Stop R For Kill Steal");
+                        AddItem(killStealMenu, "Q", "Use Q");
+                        AddItem(killStealMenu, "W", "Use W");
+                        AddItem(killStealMenu, "Ignite", "Use Ignite");
+                        miscMenu.AddSubMenu(killStealMenu);
                     }
-                    AddItem(MiscMenu, "LockR", "Lock R On Target");
-                    ChampMenu.AddSubMenu(MiscMenu);
+                    AddItem(miscMenu, "LockR", "Lock R On Target");
+                    champMenu.AddSubMenu(miscMenu);
                 }
-                var DrawMenu = new Menu("Draw", "Draw");
+                var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(DrawMenu, "Q", "Q Range", false);
-                    AddItem(DrawMenu, "W", "W Range", false);
-                    AddItem(DrawMenu, "E", "E Range", false);
-                    AddItem(DrawMenu, "R", "R Range", false);
-                    ChampMenu.AddSubMenu(DrawMenu);
+                    AddItem(drawMenu, "Q", "Q Range", false);
+                    AddItem(drawMenu, "W", "W Range", false);
+                    AddItem(drawMenu, "E", "E Range", false);
+                    AddItem(drawMenu, "R", "R Range", false);
+                    champMenu.AddSubMenu(drawMenu);
                 }
-                MainMenu.AddSubMenu(ChampMenu);
+                MainMenu.AddSubMenu(champMenu);
             }
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
-            Obj_AI_Hero.OnProcessSpellCast += OnProcessSpellCast;
+            Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             Spellbook.OnCastSpell += OnCastSpell;
             Orbwalk.AfterAttack += AfterAttack;
         }
 
         private void ComboEModeChanged(object sender, OnValueChangeEventArgs e)
         {
-            var Mode = GetValue<StringList>("Combo", "EMode").SelectedIndex;
-            GetItem("Combo", "EMode").SetValue(new StringList(GetValue<StringList>("Combo", "EMode").SList, Mode == 2 ? 0 : Mode += 1));
+            var mode = GetValue<StringList>("Combo", "EMode").SelectedIndex;
+            GetItem("Combo", "EMode")
+                .SetValue(new StringList(GetValue<StringList>("Combo", "EMode").SList, mode == 2 ? 0 : mode + 1));
         }
 
         private void OnGameUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling()) return;
+            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
+            {
+                return;
+            }
             KillSteal();
             if (Player.IsCastingInterruptableSpell(true))
             {
-                if (GetValue<bool>("Misc", "LockR")) LockROnTarget();
+                if (GetValue<bool>("Misc", "LockR"))
+                {
+                    LockROnTarget();
+                }
                 return;
             }
-            else
+            switch (Orbwalk.CurrentMode)
             {
-                RTarget = null;
-                REndPos = default(Vector3);
-                RKillable = false;
+                case Orbwalker.Mode.Combo:
+                    Fight("Combo");
+                    break;
+                case Orbwalker.Mode.Harass:
+                    Fight("Harass");
+                    break;
+                case Orbwalker.Mode.Clear:
+                    Clear();
+                    break;
+                case Orbwalker.Mode.Flee:
+                    if (GetValue<bool>("Flee", "E") && E.IsReady() &&
+                        E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast))
+                    {
+                        return;
+                    }
+                    break;
             }
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
-            {
-                NormalCombo(Orbwalk.CurrentMode.ToString());
-            }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear)
-            {
-                LaneJungClear();
-            }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee && GetValue<bool>("Flee", "E") && E.IsReady() && E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast)) return;
-            if (GetValue<KeyBind>("Harass", "AutoQ").Active) AutoQ();
+            AutoQ();
         }
 
         private void OnDraw(EventArgs args)
         {
-            if (Player.IsDead) return;
+            if (Player.IsDead)
+            {
+                return;
+            }
             if (GetValue<bool>("Combo", "E") && GetValue<bool>("Combo", "EModeDraw"))
             {
-                var Pos = Drawing.WorldToScreen(Player.Position);
-                Drawing.DrawText(Pos.X, Pos.Y, Color.Orange, GetValue<StringList>("Combo", "EMode").SelectedValue);
+                var pos = Drawing.WorldToScreen(Player.Position);
+                Drawing.DrawText(pos.X, pos.Y, Color.Orange, GetValue<StringList>("Combo", "EMode").SelectedValue);
             }
-            if (GetValue<bool>("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (GetValue<bool>("Draw", "W") && W.Level > 0) Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
-            if (GetValue<bool>("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
-            if (GetValue<bool>("Draw", "R") && R.Level > 0) Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
+            if (GetValue<bool>("Draw", "Q") && Q.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
+            }
+            if (GetValue<bool>("Draw", "W") && W.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
+            }
+            if (GetValue<bool>("Draw", "E") && E.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            }
+            if (GetValue<bool>("Draw", "R") && R.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
+            }
         }
 
         private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (!sender.IsMe) return;
+            if (!sender.IsMe)
+            {
+                return;
+            }
             if (args.SData.Name == "LucianQ")
             {
-                QCasted = true;
-                Utility.DelayAction.Add(500, () => QCasted = false);
+                _qCasted = true;
+                Utility.DelayAction.Add(500, () => _qCasted = false);
             }
             if (args.SData.Name == "LucianW")
             {
-                WCasted = true;
-                Utility.DelayAction.Add(500, () => WCasted = false);
+                _wCasted = true;
+                Utility.DelayAction.Add(500, () => _wCasted = false);
             }
             if (args.SData.Name == "LucianE")
             {
-                ECasted = true;
-                Utility.DelayAction.Add(500, () => ECasted = false);
+                _eCasted = true;
+                Utility.DelayAction.Add(500, () => _eCasted = false);
             }
-            if (args.SData.Name == "LucianR" && !RKillable) REndPos = (Player.ServerPosition - (Player.ServerPosition.To2D() + R.Range * Player.Direction.To2D().Perpendicular()).To3D()).Normalized();
+            if (args.SData.Name == "LucianR" && !_rKillable)
+            {
+                _rEndPos =
+                    (Player.ServerPosition -
+                     (Player.ServerPosition.To2D() + R.Range * Player.Direction.To2D().Perpendicular()).To3D())
+                        .Normalized();
+                Utility.DelayAction.Add(3000, () => _rEndPos = new Vector3());
+            }
         }
 
         private void OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
         {
-            if (!sender.Owner.IsMe) return;
-            if (args.Slot == SpellSlot.W && Player.IsDashing()) args.Process = false;
+            if (!sender.Owner.IsMe)
+            {
+                return;
+            }
+            if (args.Slot == SpellSlot.W && Player.IsDashing())
+            {
+                args.Process = false;
+            }
         }
 
-        private void AfterAttack(AttackableUnit Target)
+        private void AfterAttack(AttackableUnit target)
         {
-            if (!E.IsReady() || !Target.IsValidTarget()) return;
-            if ((Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear && GetValue<bool>("Clear", "E") && !HavePassive() && Target is Obj_AI_Minion) || ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || (Orbwalk.CurrentMode == Orbwalk.Mode.Harass && Player.HealthPercentage() >= GetValue<Slider>("Harass", "EHpA").Value)) && GetValue<bool>(Orbwalk.CurrentMode.ToString(), "E") && !HavePassive(Orbwalk.CurrentMode.ToString()) && Target is Obj_AI_Hero))
+            if (!E.IsReady() || !target.IsValidTarget())
             {
-                if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear || Orbwalk.CurrentMode == Orbwalk.Mode.Harass || (Orbwalk.CurrentMode == Orbwalk.Mode.Combo && GetValue<StringList>("Combo", "EMode").SelectedIndex == 0))
+                return;
+            }
+            if (((Orbwalk.CurrentMode == Orbwalker.Mode.Clear && target is Obj_AI_Minion) ||
+                 ((Orbwalk.CurrentMode == Orbwalker.Mode.Combo ||
+                   (Orbwalk.CurrentMode == Orbwalker.Mode.Harass &&
+                    Player.HealthPercentage() >= GetValue<Slider>("Harass", "EHpA").Value)) && target is Obj_AI_Hero)) &&
+                GetValue<bool>(Orbwalk.CurrentMode.ToString(), "E") && !HavePassive(Orbwalk.CurrentMode.ToString()))
+            {
+                var obj = (Obj_AI_Base) target;
+                if (Orbwalk.CurrentMode == Orbwalker.Mode.Clear || Orbwalk.CurrentMode == Orbwalker.Mode.Harass ||
+                    (Orbwalk.CurrentMode == Orbwalker.Mode.Combo &&
+                     GetValue<StringList>("Combo", "EMode").SelectedIndex == 0))
                 {
-                    var Pos = Geometry.CircleCircleIntersection(Player.ServerPosition.To2D(), ((Obj_AI_Base)Target).ServerPosition.To2D(), E.Range, Orbwalk.GetAutoAttackRange(Player, Target));
-                    if (Pos.Count() > 0)
+                    var pos = Geometry.CircleCircleIntersection(
+                        Player.ServerPosition.To2D(), obj.ServerPosition.To2D(), E.Range,
+                        Orbwalk.GetAutoAttackRange(obj));
+                    if (pos.Count() > 0)
                     {
-                        if (E.Cast(Pos.MinOrDefault(i => i.Distance(Game.CursorPos)), PacketCast)) return;
+                        E.Cast(pos.MinOrDefault(i => i.Distance(Game.CursorPos)), PacketCast);
                     }
-                    else if (E.Cast(Player.ServerPosition.Extend(((Obj_AI_Base)Target).ServerPosition, -E.Range), PacketCast)) return;
+                    else
+                    {
+                        E.Cast(Player.ServerPosition.Extend(obj.ServerPosition, -E.Range), PacketCast);
+                    }
                 }
-                else if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo)
+                else if (Orbwalk.CurrentMode == Orbwalker.Mode.Combo)
                 {
                     switch (GetValue<StringList>("Combo", "EMode").SelectedIndex)
                     {
                         case 1:
-                            if (E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast)) return;
+                            E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast);
                             break;
                         case 2:
-                            if (E.Cast(((Obj_AI_Base)Target).ServerPosition, PacketCast)) return;
+                            E.Cast(obj.ServerPosition, PacketCast);
                             break;
                     }
                 }
             }
         }
 
-        private void NormalCombo(string Mode)
+        private void Fight(string mode)
         {
-            if (Mode == "Combo" && GetValue<bool>(Mode, "R") && R.IsReady())
+            if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady())
             {
-                var Target = R.GetTarget();
-                if (Target != null && CanKill(Target, R, GetRDmg(Target)))
+                var target = R.GetTarget();
+                if (target != null && CanKill(target, R, GetRDmg(target)))
                 {
-                    if (Player.Distance(Target, true) > Math.Pow(550, 2) || (!Orbwalk.InAutoAttackRange(Target) && Player.Distance(Target, true) <= Math.Pow(550, 2) && (!GetValue<bool>(Mode, "Q") || (GetValue<bool>(Mode, "Q") && !Q.IsReady())) && (!GetValue<bool>(Mode, "W") || (GetValue<bool>(Mode, "W") && !W.IsReady())) && (!GetValue<bool>(Mode, "E") || (GetValue<bool>(Mode, "E") && !E.IsReady()))))
+                    if (Player.Distance(target) > 550 ||
+                        (!Orbwalk.InAutoAttackRange(target) && (!GetValue<bool>(mode, "Q") || !Q.IsReady()) &&
+                         (!GetValue<bool>(mode, "W") || !W.IsReady()) && (!GetValue<bool>(mode, "E") || !E.IsReady())))
                     {
-                        if (R.CastIfHitchanceEquals(Target, HitChance.Medium, PacketCast))
+                        if (R.CastIfHitchanceEquals(target, HitChance.Medium, PacketCast))
                         {
-                            RTarget = Target;
-                            REndPos = (Player.ServerPosition - Target.ServerPosition).Normalized();
-                            RKillable = true;
-                            if (GetValue<bool>(Mode, "RItem") && Youmuu.IsReady()) Utility.DelayAction.Add(10, () => Youmuu.Cast());
+                            _rTarget = target;
+                            _rEndPos = (Player.ServerPosition - target.ServerPosition).Normalized();
+                            _rKillable = true;
+                            Utility.DelayAction.Add(
+                                3000, () =>
+                                {
+                                    _rTarget = null;
+                                    _rEndPos = new Vector3();
+                                    _rKillable = false;
+                                });
+                            if (GetValue<bool>(mode, "RItem") && Youmuu.IsReady())
+                            {
+                                Utility.DelayAction.Add(10, () => Youmuu.Cast());
+                            }
                             return;
                         }
                     }
                 }
             }
-            if (Mode == "Combo" && GetValue<bool>(Mode, "E") && GetValue<bool>(Mode, "EGap") && E.IsReady())
+            if (mode == "Combo" && GetValue<bool>(mode, "E") && GetValue<bool>(mode, "EGap") && E.IsReady())
             {
-                var Target = E.GetTarget(Orbwalk.GetAutoAttackRange());
-                if (Target != null && !Orbwalk.InAutoAttackRange(Target) && Target.Distance(Player.ServerPosition.Extend(Game.CursorPos, E.Range)) + 20 <= Orbwalk.GetAutoAttackRange(Player, Target) && E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast)) return;
-            }
-            if (HavePassive(Mode) && GetValue<bool>(Mode, "PSave")) return;
-            if (!GetValue<bool>(Mode, "E") || (GetValue<bool>(Mode, "E") && !E.IsReady()))
-            {
-                if (Mode == "Combo" && GetValue<bool>(Mode, "E") && E.IsReady(GetValue<Slider>(Mode, "EDelay").Value)) return;
-                if (GetValue<bool>(Mode, "Q") && Q.IsReady())
+                var target = E.GetTarget(Orbwalk.GetAutoAttackRange());
+                if (target != null && !Orbwalk.InAutoAttackRange(target) &&
+                    Orbwalk.InAutoAttackRange(target, 20, Player.ServerPosition.Extend(Game.CursorPos, E.Range)) &&
+                    E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast))
                 {
-                    var Target = Q.GetTarget();
-                    if (Target == null) Target = Q2.GetTarget();
-                    if (Target != null)
+                    return;
+                }
+            }
+            if (GetValue<bool>(mode, "PSave") && HavePassive(mode))
+            {
+                return;
+            }
+            if (GetValue<bool>(mode, "E") &&
+                (E.IsReady() || (mode == "Combo" && E.IsReady(GetValue<Slider>(mode, "EDelay").Value))))
+            {
+                return;
+            }
+            if (GetValue<bool>(mode, "Q") && Q.IsReady())
+            {
+                var target = Q.GetTarget() ?? Q2.GetTarget();
+                if (target != null)
+                {
+                    if (((Orbwalk.InAutoAttackRange(target) && !HavePassive(mode)) ||
+                         (!Orbwalk.InAutoAttackRange(target, 20) && Q.IsInRange(target))) &&
+                        Q.CastOnUnit(target, PacketCast))
                     {
-                        if (((Orbwalk.InAutoAttackRange(Target) && !HavePassive(Mode)) || (Player.Distance(Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, Target) + 20, 2) && Q.IsInRange(Target))) && Q.CastOnUnit(Target, PacketCast) && Player.IssueOrder(GameObjectOrder.AttackUnit, Target))
-                        {
-                            return;
-                        }
-                        else if ((Mode == "Harass" || (Mode == "Combo" && GetValue<bool>(Mode, "QExtend"))) && !Q.IsInRange(Target) && CastExtendQ(Target)) return;
+                        Utility.DelayAction.Add(300, () => Player.IssueOrder(GameObjectOrder.AttackUnit, target));
+                        return;
+                    }
+                    if ((mode == "Harass" || GetValue<bool>(mode, "QExtend")) && !Q.IsInRange(target) &&
+                        CastExtendQ(target))
+                    {
+                        return;
                     }
                 }
-                if ((!GetValue<bool>(Mode, "Q") || (GetValue<bool>(Mode, "Q") && !Q.IsReady())) && GetValue<bool>(Mode, "W") && W.IsReady() && !Player.IsDashing())
+            }
+            if ((!GetValue<bool>(mode, "Q") || !Q.IsReady()) && GetValue<bool>(mode, "W") && W.IsReady() &&
+                !Player.IsDashing())
+            {
+                var target = W.GetTarget();
+                if (target != null &&
+                    ((Orbwalk.InAutoAttackRange(target) && !HavePassive(mode)) || !Orbwalk.InAutoAttackRange(target, 20)))
                 {
-                    var Target = W.GetTarget();
-                    if (Target != null && ((Orbwalk.InAutoAttackRange(Target) && !HavePassive(Mode)) || (Player.Distance(Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, Target) + 20, 2))))
+                    if (mode == "Harass" || GetValue<bool>(mode, "WPred"))
                     {
-                        if ((Mode == "Harass" || (Mode == "Combo" && GetValue<bool>(Mode, "WPred"))) && W.CastIfHitchanceEquals(Target, HitChance.Medium, PacketCast))
-                        {
-                            return;
-                        }
-                        else if (Mode == "Combo" && !GetValue<bool>(Mode, "WPred") && W.Cast(W.GetPrediction(Target).CastPosition, PacketCast)) return;
+                        W.CastIfHitchanceEquals(target, HitChance.Medium, PacketCast);
+                    }
+                    else if (mode == "Combo" && !GetValue<bool>(mode, "WPred"))
+                    {
+                        W.Cast(W.GetPrediction(target).CastPosition, PacketCast);
                     }
                 }
             }
         }
 
-        private void LaneJungClear()
+        private void Clear()
         {
-            var minionObj = MinionManager.GetMinions(Q2.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-            if (minionObj.Count == 0) return;
-            if (!GetValue<bool>("Clear", "E") || (GetValue<bool>("Clear", "E") && !E.IsReady()))
+            var minionObj = MinionManager.GetMinions(
+                Q2.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            if (minionObj.Count == 0 || HavePassive())
             {
-                if (GetValue<bool>("Clear", "E") && E.IsReady(GetValue<Slider>("Clear", "EDelay").Value)) return;
-                if (GetValue<bool>("Clear", "W") && W.IsReady() && !HavePassive() && !Player.IsDashing())
+                return;
+            }
+            if (GetValue<bool>("Clear", "E") && (E.IsReady() || E.IsReady(GetValue<Slider>("Clear", "EDelay").Value)))
+            {
+                return;
+            }
+            if (GetValue<bool>("Clear", "W") && W.IsReady() && !Player.IsDashing())
+            {
+                var pos = W.GetCircularFarmLocation(minionObj.FindAll(i => W.IsInRange(i)));
+                if (pos.MinionsHit > 1)
                 {
-                    var Pos = W.GetCircularFarmLocation(minionObj.FindAll(i => W.IsInRange(i)));
-                    if (Pos.MinionsHit > 1)
+                    if (pos.Position.IsValid() && W.Cast(pos.Position, PacketCast))
                     {
-                        if (Pos.Position.IsValid() && W.Cast(Pos.Position, PacketCast)) return;
-                    }
-                    else
-                    {
-                        var Obj = minionObj.Find(i => i.MaxHealth >= 1200);
-                        if (Obj != null && W.IsInRange(Obj) && W.CastIfHitchanceEquals(Obj, HitChance.Medium, PacketCast)) return;
+                        return;
                     }
                 }
-                if ((!GetValue<bool>("Clear", "W") || (GetValue<bool>("Clear", "W") && !W.IsReady())) && GetValue<bool>("Clear", "Q") && Q.IsReady() && !HavePassive())
+                else
                 {
-                    var Pos = Q2.GetLineFarmLocation(minionObj);
-                    if (Pos.MinionsHit > 0 && Pos.Position.IsValid())
+                    var obj = minionObj.Find(i => i.MaxHealth >= 1200);
+                    if (obj != null && W.IsInRange(obj) && W.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast))
                     {
-                        var Obj = minionObj.Find(i => Q.IsInRange(i) && Q2.WillHit(i, Pos.Position.To3D().Extend(Player.ServerPosition, -Q2.Range), (int)(i.BoundingRadius / 4)));
-                        if (Obj != null && Q.CastOnUnit(Obj, PacketCast) && Player.IssueOrder(GameObjectOrder.AttackUnit, Obj)) return;
+                        return;
+                    }
+                }
+            }
+            if ((!GetValue<bool>("Clear", "W") || !W.IsReady()) && GetValue<bool>("Clear", "Q") && Q.IsReady())
+            {
+                var pos = Q2.GetLineFarmLocation(minionObj);
+                if (pos.MinionsHit > 0 && pos.Position.IsValid())
+                {
+                    var obj =
+                        minionObj.Find(
+                            i =>
+                                Q.IsInRange(i) &&
+                                Q2.WillHit(
+                                    i, pos.Position.To3D().Extend(Player.ServerPosition, -Q2.Range),
+                                    (int) (i.BoundingRadius / 2)));
+                    if (obj != null && Q.CastOnUnit(obj, PacketCast))
+                    {
+                        Utility.DelayAction.Add(300, () => Player.IssueOrder(GameObjectOrder.AttackUnit, obj));
                     }
                 }
             }
@@ -300,78 +407,112 @@ namespace BrianSharp.Plugin
 
         private void AutoQ()
         {
-            if (!Q.IsReady() || Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value) return;
-            var Target = Q2.GetTarget();
-            if (Target != null && !Q.IsInRange(Target) && CastExtendQ(Target)) return;
+            if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
+                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+            {
+                return;
+            }
+            var target = Q2.GetTarget();
+            if (target != null && !Q.IsInRange(target))
+            {
+                CastExtendQ(target);
+            }
         }
 
         private void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
-                var Target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
-                if (Target != null && CastIgnite(Target)) return;
+                var target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
+                if (target != null && CastIgnite(target))
+                {
+                    return;
+                }
             }
-            if (Player.IsDashing() || (!GetValue<bool>("KillSteal", "RStop") && Player.IsCastingInterruptableSpell(true))) return;
-            var CancelR = GetValue<bool>("KillSteal", "RStop") && Player.IsCastingInterruptableSpell(true);
+            if (Player.IsDashing() ||
+                (!GetValue<bool>("KillSteal", "RStop") && Player.IsCastingInterruptableSpell(true)))
+            {
+                return;
+            }
+            var cancelR = GetValue<bool>("KillSteal", "RStop") && Player.IsCastingInterruptableSpell(true);
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
-                var Target = Q.GetTarget();
-                if (Target == null) Target = Q2.GetTarget();
-                if (Target != null && CanKill(Target, Q))
+                var target = Q.GetTarget() ?? Q2.GetTarget();
+                if (target != null && CanKill(target, Q))
                 {
-                    if (Q.IsInRange(Target))
+                    if (Q.IsInRange(target))
                     {
-                        if ((!CancelR || (CancelR && R.Cast(PacketCast))) && Q.CastOnUnit(Target, PacketCast)) return;
+                        if ((!cancelR || R.Cast(PacketCast)) && Q.CastOnUnit(target, PacketCast))
+                        {
+                            return;
+                        }
                     }
-                    else if (CastExtendQ(Target, CancelR)) return;
+                    else if (CastExtendQ(target, cancelR))
+                    {
+                        return;
+                    }
                 }
             }
             if (GetValue<bool>("KillSteal", "W") && W.IsReady() && !Player.IsDashing())
             {
-                var Target = W.GetTarget();
-                if (Target != null && CanKill(Target, W) && (!CancelR || (CancelR && R.Cast(PacketCast))) && W.CastIfHitchanceEquals(Target, HitChance.Medium, PacketCast)) return;
+                var target = W.GetTarget();
+                if (target != null && CanKill(target, W) && (!cancelR || R.Cast(PacketCast)))
+                {
+                    W.CastIfHitchanceEquals(target, HitChance.Medium, PacketCast);
+                }
             }
         }
 
         private void LockROnTarget()
         {
-            var Target = RTarget.IsValidTarget() ? RTarget : R.GetTarget();
-            if (Target == null || REndPos == default(Vector3)) return;
-            var Pos = R.GetPrediction(Target).CastPosition;
-            var FullPoint = new Vector2(Pos.X + REndPos.X * R.Range * 0.98f, Pos.Y + REndPos.Y * R.Range * 0.98f).To3D();
-            //var MidPoint = new Vector2((FullPoint.X * 2 - Pos.X) / Pos.Distance(FullPoint) * R.Range * 0.98f, (FullPoint.Y * 2 - Pos.Y) / Pos.Distance(FullPoint) * R.Range * 0.98f).To3D();
-            var ClosestPoint = Player.ServerPosition.To2D().Closest(new List<Vector3> { Pos, FullPoint }.To2D()).To3D();
-            if (ClosestPoint.IsValid() && !ClosestPoint.IsWall() && Pos.Distance(ClosestPoint) > E.Range)
+            var target = _rTarget.IsValidTarget() ? _rTarget : R.GetTarget();
+            if (target == null)
             {
-                Player.IssueOrder(GameObjectOrder.MoveTo, ClosestPoint);
+                return;
             }
-            else if (FullPoint.IsValid() && !FullPoint.IsWall() && Pos.Distance(FullPoint) < R.Range && Pos.Distance(FullPoint) > 100)
+            var pos = R.GetPrediction(target).CastPosition;
+            var fullPoint =
+                new Vector2(pos.X + _rEndPos.X * R.Range * 0.98f, pos.Y + _rEndPos.Y * R.Range * 0.98f).To3D();
+            //var MidPoint = new Vector2((FullPoint.X * 2 - Pos.X) / Pos.Distance(FullPoint) * R.Range * 0.98f, (FullPoint.Y * 2 - Pos.Y) / Pos.Distance(FullPoint) * R.Range * 0.98f).To3D();
+            var closestPoint = Player.ServerPosition.To2D().Closest(new List<Vector3> { pos, fullPoint }.To2D()).To3D();
+            if (closestPoint.IsValid() && !closestPoint.IsWall() && pos.Distance(closestPoint) > E.Range)
             {
-                Player.IssueOrder(GameObjectOrder.MoveTo, FullPoint);
+                Player.IssueOrder(GameObjectOrder.MoveTo, closestPoint);
+            }
+            else if (fullPoint.IsValid() && !fullPoint.IsWall() && pos.Distance(fullPoint) < R.Range &&
+                     pos.Distance(fullPoint) > 100)
+            {
+                Player.IssueOrder(GameObjectOrder.MoveTo, fullPoint);
             }
             //else if (MidPoint.IsValid() && !MidPoint.IsWall()) Player.IssueOrder(GameObjectOrder.MoveTo, MidPoint);
         }
 
-        private bool CastExtendQ(Obj_AI_Hero Target, bool CancelR = false)
+        private bool CastExtendQ(Obj_AI_Hero target, bool cancelR = false)
         {
-            var Obj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Find(i => Q2.WillHit(Target, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range), (int)(Target.BoundingRadius / 4)));
-            if (Obj != null && (!CancelR || (CancelR && R.Cast(PacketCast))) && Q.CastOnUnit(Obj, PacketCast)) return true;
-            return false;
+            var obj =
+                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly)
+                    .Find(
+                        i =>
+                            Q2.WillHit(
+                                target, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range),
+                                (int) (target.BoundingRadius / 4)));
+            return obj != null && (!cancelR || R.Cast(PacketCast)) && Q.CastOnUnit(obj, PacketCast);
         }
 
-        private bool HavePassive(string Mode = "Clear")
+        private bool HavePassive(string mode = "Clear")
         {
-            if (Mode != "Clear" && !GetValue<bool>(Mode, "P")) return false;
-            if (QCasted || WCasted || ECasted || Player.HasBuff("LucianPassiveBuff")) return true;
-            return false;
+            return (mode == "Clear" || GetValue<bool>(mode, "P")) &&
+                   (_qCasted || _wCasted || _eCasted || Player.HasBuff("LucianPassiveBuff"));
         }
 
-        private double GetRDmg(Obj_AI_Hero Target)
+        private double GetRDmg(Obj_AI_Hero target)
         {
-            var Shot = (int)(7.5 + new double[] { 7.5, 9, 10.5 }[R.Level - 1] * 1 / Player.AttackDelay);
-            var MaxShot = new int[] { 26, 30, 33 }[R.Level - 1];
-            return Player.CalcDamage(Target, Damage.DamageType.Physical, (new double[] { 40, 50, 60 }[R.Level - 1] + 0.25 * Player.FlatPhysicalDamageMod + 0.1 * Player.FlatMagicDamageMod) * (Shot > MaxShot ? MaxShot : Shot));
+            var shot = (int) (7.5 + new[] { 7.5, 9, 10.5 }[R.Level - 1] * 1 / Player.AttackDelay);
+            var maxShot = new[] { 26, 30, 33 }[R.Level - 1];
+            return Player.CalcDamage(
+                target, Damage.DamageType.Physical,
+                (new[] { 40, 50, 60 }[R.Level - 1] + 0.25 * Player.FlatPhysicalDamageMod +
+                 0.1 * Player.FlatMagicDamageMod) * (shot > maxShot ? maxShot : shot));
         }
     }
 }

@@ -1,16 +1,13 @@
 ﻿using System;
-using System.Linq;
-
+using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
 using LeagueSharp.Common.Data;
-
-using BrianSharp.Common;
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp
 {
-    class Program
+    internal class Program
     {
         public static Obj_AI_Hero Player;
         public static Spell Q, Q2, W, W2, E, E2, R;
@@ -21,20 +18,24 @@ namespace BrianSharp
 
         private static void Main(string[] args)
         {
-            CustomEvents.Game.OnGameLoad += OnGameLoad;
+            if (Game.Mode == GameMode.Running)
+            {
+                Game_OnGameStart(new EventArgs());
+            }
+            Game.OnGameStart += Game_OnGameStart;
         }
 
-        private static void OnGameLoad(EventArgs args)
+        private static void Game_OnGameStart(EventArgs args)
         {
             Player = ObjectManager.Player;
             PlayerName = Player.ChampionName;
-            Game.PrintChat("<font color = \'{0}'>Brian Sharp</font>", HTMLColor.Lime);
+            Game.PrintChat("<font color = \'{0}'>Brian Sharp</font>", HtmlColor.Lime);
             MainMenu = new Menu("Brian Sharp", "BrianSharp", true);
-            var InfoMenu = new Menu("Info", "Info");
+            var infoMenu = new Menu("Info", "Info");
             {
-                InfoMenu.AddItem(new MenuItem("Author", "Author: Brian"));
-                InfoMenu.AddItem(new MenuItem("Paypal", "Paypal: dcbrian01@gmail.com"));
-                MainMenu.AddSubMenu(InfoMenu);
+                infoMenu.AddItem(new MenuItem("Author", "Author: Brian"));
+                infoMenu.AddItem(new MenuItem("Paypal", "Paypal: dcbrian01@gmail.com"));
+                MainMenu.AddSubMenu(infoMenu);
             }
             TargetSelector.AddToMenu(MainMenu.AddSubMenu(new Menu("Target Selector", "TS")));
             Orbwalk.AddToMainMenu(MainMenu);
@@ -49,22 +50,34 @@ namespace BrianSharp
                     Sheen = ItemData.Sheen.GetItem();
                     Iceborn = ItemData.Iceborn_Gauntlet.GetItem();
                     Trinity = ItemData.Trinity_Force.GetItem();
-                    Helper.AddItem(MainMenu.SubMenu(PlayerName + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
+                    Helper.AddItem(
+                        MainMenu.SubMenu(PlayerName + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
                     Flash = Player.GetSpellSlot("summonerflash");
-                    foreach (var Spell in Player.Spellbook.Spells.Where(i => i.Name.ToLower().Contains("smite") && (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2))) Smite = Spell.Slot;
+                    foreach (var spell in
+                        Player.Spellbook.Spells.FindAll(
+                            i =>
+                                i.Name.ToLower().Contains("smite") &&
+                                (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2)))
+                    {
+                        Smite = spell.Slot;
+                    }
                     Ignite = Player.GetSpellSlot("summonerdot");
-                    Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>Plugin {2}</font>: <font color = \'{3}'>Loaded !</font>", HTMLColor.BlueViolet, HTMLColor.Gold, PlayerName, HTMLColor.Cyan);
+                    Game.PrintChat(
+                        "<font color = \'{0}'>-></font> <font color = \'{1}'>Plugin {2}</font>: <font color = \'{3}'>Loaded !</font>",
+                        HtmlColor.BlueViolet, HtmlColor.Gold, PlayerName, HtmlColor.Cyan);
                 }
             }
-            catch
+            catch (Exception)
             {
-                Game.PrintChat("<font color = \'{0}'>-></font> <font color = \'{1}'>{2}</font>: <font color = \'{3}'>Currently not supported !</font>", HTMLColor.BlueViolet, HTMLColor.Gold, PlayerName, HTMLColor.Cyan);
+                Game.PrintChat(
+                    "<font color = \'{0}'>-></font> <font color = \'{1}'>{2}</font>: <font color = \'{3}'>Currently not supported !</font>",
+                    HtmlColor.BlueViolet, HtmlColor.Gold, PlayerName, HtmlColor.Cyan);
             }
             MainMenu.AddToMainMenu();
         }
     }
 
-    class HTMLColor
+    internal class HtmlColor
     {
         public const string AliceBlue = "#F0F8FF";
         public const string AntiqueWhite = "#FAEBD7";

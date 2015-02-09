@@ -1,257 +1,366 @@
 ﻿using System;
+using System.Drawing;
 using System.Linq;
-using Color = System.Drawing.Color;
-
+using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
-using SharpDX;
-
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp.Plugin
 {
-    class Aatrox : Common.Helper
+    internal class Aatrox : Helper
     {
         public Aatrox()
         {
             Q = new Spell(SpellSlot.Q, 650);
             Q2 = new Spell(SpellSlot.Q, 650);
             W = new Spell(SpellSlot.W);
-            E = new Spell(SpellSlot.E, 1075);
+            E = new Spell(SpellSlot.E, 1040);
             R = new Spell(SpellSlot.R, 550);
             Q.SetSkillshot(0.6f, 250, 2000, false, SkillshotType.SkillshotCircle);
             Q2.SetSkillshot(0.6f, 150, 2000, false, SkillshotType.SkillshotCircle);
             E.SetSkillshot(0.25f, 75, 1250, false, SkillshotType.SkillshotLine);
             R.SetSkillshot(0.5f, 550, 800, false, SkillshotType.SkillshotCircle);
 
-            var ChampMenu = new Menu("Plugin", PlayerName + "_Plugin");
+            var champMenu = new Menu("Plugin", PlayerName + "_Plugin");
             {
-                var ComboMenu = new Menu("Combo", "Combo");
+                var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(ComboMenu, "Q", "Use Q");
-                    AddItem(ComboMenu, "W", "Use W");
-                    AddItem(ComboMenu, "WHpU", "-> Switch To Heal If Hp Under", 50);
-                    AddItem(ComboMenu, "E", "Use E");
-                    AddItem(ComboMenu, "R", "Use R");
-                    AddItem(ComboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddItem(ComboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
-                    ChampMenu.AddSubMenu(ComboMenu);
+                    AddItem(comboMenu, "Q", "Use Q");
+                    AddItem(comboMenu, "W", "Use W");
+                    AddItem(comboMenu, "WHpU", "-> Switch To Heal If Hp Under", 50);
+                    AddItem(comboMenu, "E", "Use E");
+                    AddItem(comboMenu, "R", "Use R");
+                    AddItem(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
+                    AddItem(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    champMenu.AddSubMenu(comboMenu);
                 }
-                var HarassMenu = new Menu("Harass", "Harass");
+                var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(HarassMenu, "AutoE", "Use E", "H", KeyBindType.Toggle);
-                    AddItem(HarassMenu, "AutoEHpA", "-> If Hp Above", 50);
-                    AddItem(HarassMenu, "Q", "Use Q");
-                    AddItem(HarassMenu, "QHpA", "-> If Hp Above", 20);
-                    AddItem(HarassMenu, "E", "Use E");
-                    ChampMenu.AddSubMenu(HarassMenu);
+                    AddItem(harassMenu, "AutoE", "Auto E", "H", KeyBindType.Toggle);
+                    AddItem(harassMenu, "AutoEHpA", "-> If Hp Above", 50);
+                    AddItem(harassMenu, "Q", "Use Q");
+                    AddItem(harassMenu, "QHpA", "-> If Hp Above", 20);
+                    AddItem(harassMenu, "E", "Use E");
+                    champMenu.AddSubMenu(harassMenu);
                 }
-                var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
+                var clearMenu = new Menu("Clear", "Clear");
                 {
-                    var SmiteMob = new Menu("Smite Mob If Killable", "SmiteMob");
+                    AddSmiteMobMenu(clearMenu);
+                    AddItem(clearMenu, "Q", "Use Q");
+                    AddItem(clearMenu, "W", "Use W");
+                    AddItem(clearMenu, "WPriority", "-> Priority Heal");
+                    AddItem(clearMenu, "WHpU", "-> Switch To Heal If Hp Under", 50);
+                    AddItem(clearMenu, "E", "Use E");
+                    AddItem(clearMenu, "Item", "Use Tiamat/Hydra Item");
+                    champMenu.AddSubMenu(clearMenu);
+                }
+                var fleeMenu = new Menu("Flee", "Flee");
+                {
+                    AddItem(fleeMenu, "Q", "Use Q");
+                    AddItem(fleeMenu, "E", "Use E To Slow Enemy");
+                    champMenu.AddSubMenu(fleeMenu);
+                }
+                var miscMenu = new Menu("Misc", "Misc");
+                {
+                    var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(SmiteMob, "Smite", "Use Smite");
-                        AddItem(SmiteMob, "Baron", "-> Baron Nashor");
-                        AddItem(SmiteMob, "Dragon", "-> Dragon");
-                        AddItem(SmiteMob, "Red", "-> Red Brambleback");
-                        AddItem(SmiteMob, "Blue", "-> Blue Sentinel");
-                        AddItem(SmiteMob, "Krug", "-> Ancient Krug");
-                        AddItem(SmiteMob, "Gromp", "-> Gromp");
-                        AddItem(SmiteMob, "Raptor", "-> Crimson Raptor");
-                        AddItem(SmiteMob, "Wolf", "-> Greater Murk Wolf");
-                        ClearMenu.AddSubMenu(SmiteMob);
+                        AddItem(killStealMenu, "Q", "Use Q");
+                        AddItem(killStealMenu, "E", "Use E");
+                        AddItem(killStealMenu, "R", "Use R");
+                        AddItem(killStealMenu, "Ignite", "Use Ignite");
+                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        miscMenu.AddSubMenu(killStealMenu);
                     }
-                    AddItem(ClearMenu, "Q", "Use Q");
-                    AddItem(ClearMenu, "W", "Use W");
-                    AddItem(ClearMenu, "WPriority", "-> Priority Heal");
-                    AddItem(ClearMenu, "WHpU", "-> Switch To Heal If Hp Under", 50);
-                    AddItem(ClearMenu, "E", "Use E");
-                    AddItem(ClearMenu, "Item", "Use Tiamat/Hydra Item");
-                    ChampMenu.AddSubMenu(ClearMenu);
-                }
-                var FleeMenu = new Menu("Flee", "Flee");
-                {
-                    AddItem(FleeMenu, "Q", "Use Q");
-                    AddItem(FleeMenu, "E", "Use E To Slow Enemy");
-                    ChampMenu.AddSubMenu(FleeMenu);
-                }
-                var MiscMenu = new Menu("Misc", "Misc");
-                {
-                    var KillStealMenu = new Menu("Kill Steal", "KillSteal");
+                    var antiGapMenu = new Menu("Anti Gap Closer", "AntiGap");
                     {
-                        AddItem(KillStealMenu, "Q", "Use Q");
-                        AddItem(KillStealMenu, "E", "Use E");
-                        AddItem(KillStealMenu, "R", "Use R");
-                        AddItem(KillStealMenu, "Ignite", "Use Ignite");
-                        MiscMenu.AddSubMenu(KillStealMenu);
-                    }
-                    var AntiGapMenu = new Menu("Anti Gap Closer", "AntiGap");
-                    {
-                        AddItem(AntiGapMenu, "Q", "Use Q");
-                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy))
+                        AddItem(antiGapMenu, "Q", "Use Q");
+                        foreach (var spell in
+                            AntiGapcloser.Spells.FindAll(
+                                i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            foreach (var Spell in AntiGapcloser.Spells.Where(i => i.ChampionName == Obj.ChampionName)) AddItem(AntiGapMenu, Obj.ChampionName + "_" + Spell.Slot.ToString(), "-> Skill " + Spell.Slot.ToString() + " Of " + Obj.ChampionName);
+                            AddItem(
+                                antiGapMenu, spell.ChampionName + "_" + spell.Slot,
+                                "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
-                        MiscMenu.AddSubMenu(AntiGapMenu);
+                        miscMenu.AddSubMenu(antiGapMenu);
                     }
-                    var InterruptMenu = new Menu("Interrupt", "Interrupt");
+                    var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(InterruptMenu, "Q", "Use Q");
-                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy))
+                        AddItem(interruptMenu, "Q", "Use Q");
+                        foreach (var spell in
+                            Interrupter.Spells.FindAll(
+                                i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            foreach (var Spell in Interrupter.Spells.Where(i => i.ChampionName == Obj.ChampionName)) AddItem(InterruptMenu, Obj.ChampionName + "_" + Spell.Slot.ToString(), "-> Skill " + Spell.Slot.ToString() + " Of " + Obj.ChampionName);
+                            AddItem(
+                                interruptMenu, spell.ChampionName + "_" + spell.Slot,
+                                "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
-                        MiscMenu.AddSubMenu(InterruptMenu);
+                        miscMenu.AddSubMenu(interruptMenu);
                     }
-                    ChampMenu.AddSubMenu(MiscMenu);
+                    champMenu.AddSubMenu(miscMenu);
                 }
-                var DrawMenu = new Menu("Draw", "Draw");
+                var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(DrawMenu, "Q", "Q Range", false);
-                    AddItem(DrawMenu, "E", "E Range", false);
-                    AddItem(DrawMenu, "R", "R Range", false);
-                    ChampMenu.AddSubMenu(DrawMenu);
+                    AddItem(drawMenu, "Q", "Q Range", false);
+                    AddItem(drawMenu, "E", "E Range", false);
+                    AddItem(drawMenu, "R", "R Range", false);
+                    champMenu.AddSubMenu(drawMenu);
                 }
-                MainMenu.AddSubMenu(ChampMenu);
+                MainMenu.AddSubMenu(champMenu);
             }
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
+            //Interrupter2.OnInterruptableTarget += OnInterruptableTarget;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
         private void OnGameUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling()) return;
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
+            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
-                NormalCombo(Orbwalk.CurrentMode.ToString());
+                return;
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear)
+            switch (Orbwalk.CurrentMode)
             {
-                LaneJungClear();
+                case Orbwalker.Mode.Combo:
+                    Fight("Combo");
+                    break;
+                case Orbwalker.Mode.Harass:
+                    Fight("Harass");
+                    break;
+                case Orbwalker.Mode.Clear:
+                    Clear();
+                    break;
+                case Orbwalker.Mode.Flee:
+                    Flee();
+                    break;
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee) Flee();
-            if (GetValue<KeyBind>("Harass", "AutoE").Active) AutoE();
+            AutoE();
             KillSteal();
         }
 
         private void OnDraw(EventArgs args)
         {
-            if (Player.IsDead) return;
-            if (GetValue<bool>("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (GetValue<bool>("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
-            if (GetValue<bool>("Draw", "R") && R.Level > 0) Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
+            if (Player.IsDead)
+            {
+                return;
+            }
+            if (GetValue<bool>("Draw", "Q") && Q.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
+            }
+            if (GetValue<bool>("Draw", "E") && E.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            }
+            if (GetValue<bool>("Draw", "R") && R.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.Green : Color.Red);
+            }
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (Player.IsDead || !GetValue<bool>("AntiGap", "Q") || !GetValue<bool>("AntiGap", gapcloser.Sender.ChampionName + "_" + gapcloser.Slot.ToString()) || !Q.IsReady() || !Orbwalk.InAutoAttackRange(gapcloser.Sender)) return;
-            if (Q2.CastIfWillHit(gapcloser.Sender, -1, PacketCast)) return;
+            if (Player.IsDead || !GetValue<bool>("AntiGap", "Q") ||
+                !GetValue<bool>("AntiGap", gapcloser.Sender.ChampionName + "_" + gapcloser.Slot) || !Q.IsReady())
+            {
+                return;
+            }
+            Q2.CastIfWillHit(gapcloser.Sender, -1, PacketCast);
+        }
+
+        private void OnInterruptableTarget(Obj_AI_Hero sender, Interrupter2.InterruptableTargetEventArgs args)
+        {
+            if (Player.IsDead || !GetValue<bool>("Interrupt", "Q") ||
+                !GetValue<bool>("Interrupt", sender.ChampionName + "_" + args) || !Q.CanCast(sender))
+            {
+                return;
+            }
+            Q2.CastIfWillHit(sender, -1, PacketCast);
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
-            if (Player.IsDead || !GetValue<bool>("Interrupt", "Q") || !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot.ToString()) || !Q.CanCast(unit)) return;
-            if (Q2.CastIfWillHit(unit, -1, PacketCast)) return;
+            if (Player.IsDead || !GetValue<bool>("Interrupt", "Q") ||
+                !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !Q.CanCast(unit))
+            {
+                return;
+            }
+            Q2.CastIfWillHit(unit, -1, PacketCast);
         }
 
-        private void NormalCombo(string Mode)
+        private void Fight(string mode)
         {
-            if (GetValue<bool>(Mode, "Q") && (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= GetValue<Slider>(Mode, "QHpA").Value)) && Q2.CastOnBestTarget(0, PacketCast, true).IsCasted()) return;
-            if (GetValue<bool>(Mode, "E") && E.CastOnBestTarget(0, PacketCast).IsCasted()) return;
-            if (Mode == "Combo")
+            if (GetValue<bool>(mode, "Q") &&
+                (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value) &&
+                Q2.CastOnBestTarget(0, PacketCast, true).IsCasted())
             {
-                if (GetValue<bool>(Mode, "W") && W.IsReady())
+                return;
+            }
+            if (GetValue<bool>(mode, "E") && E.CastOnBestTarget(0, PacketCast).IsCasted())
+            {
+                return;
+            }
+            if (mode != "Combo")
+            {
+                return;
+            }
+            if (GetValue<bool>(mode, "W") && W.IsReady())
+            {
+                if (Player.HealthPercentage() >= GetValue<Slider>("Clear", "WHpU").Value)
                 {
-                    if (Player.HealthPercentage() >= GetValue<Slider>("Clear", "WHpU").Value)
+                    if (!Player.HasBuff("AatroxWPower") && W.Cast(PacketCast))
                     {
-                        if (!Player.HasBuff("AatroxWPower") && W.Cast(PacketCast)) return;
+                        return;
                     }
-                    else if (Player.HasBuff("AatroxWPower") && W.Cast(PacketCast)) return;
                 }
-                if (GetValue<bool>(Mode, "R") && R.IsReady())
+                else if (Player.HasBuff("AatroxWPower") && W.Cast(PacketCast))
                 {
-                    var Target = ObjectManager.Get<Obj_AI_Hero>().FindAll(i => i.IsValidTarget(R.Range));
-                    if (((Target.Count > 1 && Target.Count(i => CanKill(i, R)) > 0) || Target.Count >= GetValue<Slider>(Mode, "RCountA").Value || (Target.Count > 1 && Target.Count(i => i.HealthPercentage() < GetValue<Slider>(Mode, "RHpU").Value) > 0)) && R.Cast(PacketCast)) return;
+                    return;
+                }
+            }
+            if (GetValue<bool>(mode, "R") && R.IsReady())
+            {
+                var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range));
+                if ((target.Count > 1 && target.Count(i => CanKill(i, R)) > 0) ||
+                    target.Count >= GetValue<Slider>(mode, "RCountA").Value ||
+                    (target.Count > 1 &&
+                     target.Count(i => i.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value) > 0))
+                {
+                    R.Cast(PacketCast);
                 }
             }
         }
 
-        private void LaneJungClear()
+        private void Clear()
         {
-            var minionObj = MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-            if (minionObj.Count == 0) return;
+            SmiteMob();
+            var minionObj = MinionManager.GetMinions(
+                E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            if (minionObj.Count == 0)
+            {
+                return;
+            }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var Pos = Q.GetCircularFarmLocation(minionObj.FindAll(i => Q.IsInRange(i)));
-                if (Pos.MinionsHit > 1)
+                var pos = Q.GetCircularFarmLocation(minionObj.FindAll(i => Q.IsInRange(i)));
+                if (pos.MinionsHit > 1)
                 {
-                    if (Pos.Position.IsValid() && Q.Cast(Pos.Position, PacketCast)) return;
+                    if (pos.Position.IsValid() && Q.Cast(pos.Position, PacketCast))
+                    {
+                        return;
+                    }
                 }
                 else
                 {
-                    var Obj = minionObj.Find(i => i.MaxHealth >= 1200);
-                    if (Obj != null && Q.IsInRange(Obj) && Q.CastIfWillHit(Obj, -1, PacketCast)) return;
+                    var obj = minionObj.Find(i => i.MaxHealth >= 1200);
+                    if (obj != null && Q.IsInRange(obj) && Q.CastIfWillHit(obj, -1, PacketCast))
+                    {
+                        return;
+                    }
                 }
             }
             if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
-                var Pos = E.GetLineFarmLocation(minionObj);
-                if (Pos.MinionsHit > 0 && Pos.Position.IsValid() && E.Cast(Pos.Position, PacketCast)) return;
+                var pos = E.GetLineFarmLocation(minionObj);
+                if (pos.MinionsHit > 0 && pos.Position.IsValid() && E.Cast(pos.Position, PacketCast))
+                {
+                    return;
+                }
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady())
             {
-                if (Player.HealthPercentage() >= (GetValue<bool>("Clear", "WPriority") ? 85 : GetValue<Slider>("Clear", "WHpU").Value))
+                if (Player.HealthPercentage() >=
+                    (GetValue<bool>("Clear", "WPriority") ? 85 : GetValue<Slider>("Clear", "WHpU").Value))
                 {
-                    if (!Player.HasBuff("AatroxWPower") && W.Cast(PacketCast)) return;
+                    if (!Player.HasBuff("AatroxWPower") && W.Cast(PacketCast))
+                    {
+                        return;
+                    }
                 }
-                else if (Player.HasBuff("AatroxWPower") && W.Cast(PacketCast)) return;
+                else if (Player.HasBuff("AatroxWPower") && W.Cast(PacketCast))
+                {
+                    return;
+                }
             }
             if (GetValue<bool>("Clear", "Item"))
             {
-                var Item = Hydra.IsReady() ? Hydra : Tiamat;
-                if (Item.IsReady() && (minionObj.Count(i => Item.IsInRange(i)) > 2 || minionObj.Any(i => i.MaxHealth >= 1200 && i.Distance(Player, true) <= Math.Pow(Item.Range - 80, 2))) && Item.Cast()) return;
-            }
-            if (GetValue<bool>("SmiteMob", "Smite") && Smite.IsReady())
-            {
-                var Obj = minionObj.Find(i => i.Team == GameObjectTeam.Neutral && CanSmiteMob(i.Name));
-                if (Obj != null && CastSmite(Obj)) return;
+                var item = Hydra.IsReady() ? Hydra : Tiamat;
+                if (item.IsReady() &&
+                    (minionObj.Count(i => item.IsInRange(i)) > 2 ||
+                     minionObj.Any(i => i.MaxHealth >= 1200 && i.Distance(Player) < item.Range - 80)))
+                {
+                    item.Cast();
+                }
             }
         }
 
         private void Flee()
         {
-            if (GetValue<bool>("Flee", "Q") && Q.IsReady() && Q.Cast(Game.CursorPos, PacketCast)) return;
-            if (GetValue<bool>("Flee", "E") && E.CastOnBestTarget(0, PacketCast).IsCasted()) return;
+            if (GetValue<bool>("Flee", "Q") && Q.IsReady() && Q.Cast(Game.CursorPos, PacketCast))
+            {
+                return;
+            }
+            if (GetValue<bool>("Flee", "E") && E.IsReady())
+            {
+                E.CastOnBestTarget(0, PacketCast);
+            }
         }
 
         private void AutoE()
         {
-            if (Player.HealthPercentage() < GetValue<Slider>("Harass", "AutoEHpA").Value || E.CastOnBestTarget(0, PacketCast).IsCasted()) return;
+            if (!GetValue<KeyBind>("Harass", "AutoE").Active ||
+                Player.HealthPercentage() < GetValue<Slider>("Harass", "AutoEHpA").Value || !E.IsReady())
+            {
+                return;
+            }
+            E.CastOnBestTarget(0, PacketCast);
         }
 
         private void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
-                var Target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
-                if (Target != null && CastIgnite(Target)) return;
+                var target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
+                if (target != null && CastIgnite(target))
+                {
+                    return;
+                }
+            }
+            if (GetValue<bool>("KillSteal", "Smite") &&
+                (CurrentSmiteType == SmiteType.Blue || CurrentSmiteType == SmiteType.Red))
+            {
+                var target = TargetSelector.GetTarget(760, TargetSelector.DamageType.True);
+                if (target != null && CastSmite(target))
+                {
+                    return;
+                }
             }
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
-                var Target = Q.GetTarget();
-                if (Target != null && CanKill(Target, Q) && Q.CastIfWillHit(Target, -1, PacketCast)) return;
+                var target = Q.GetTarget();
+                if (target != null && CanKill(target, Q) && Q.CastIfWillHit(target, -1, PacketCast))
+                {
+                    return;
+                }
             }
             if (GetValue<bool>("KillSteal", "E") && E.IsReady())
             {
-                var Target = E.GetTarget();
-                if (Target != null && CanKill(Target, E) && E.CastIfHitchanceEquals(Target, HitChance.High, PacketCast)) return;
+                var target = E.GetTarget();
+                if (target != null && CanKill(target, E) && E.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
+                {
+                    return;
+                }
             }
             if (GetValue<bool>("KillSteal", "R") && R.IsReady())
             {
-                var Target = R.GetTarget();
-                if (Target != null && CanKill(Target, R) && R.Cast(PacketCast)) return;
+                var target = R.GetTarget();
+                if (target != null && CanKill(target, R))
+                {
+                    R.Cast(PacketCast);
+                }
             }
         }
     }

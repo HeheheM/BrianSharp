@@ -1,126 +1,119 @@
 ﻿using System;
 using System.Linq;
-using Color = System.Drawing.Color;
-
+using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
-
+using Color = System.Drawing.Color;
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp.Plugin
 {
-    class Jax : Common.Helper
+    internal class Jax : Helper
     {
-        private bool WardCasted = false;
-        private int RCount = 0;
-        private Vector3 WardPlacePos = default(Vector3);
+        private bool _wardCasted;
+        private Vector3 _wardPlacePos;
 
         public Jax()
         {
             Q = new Spell(SpellSlot.Q, 700);
-            W = new Spell(SpellSlot.W);
+            W = new Spell(SpellSlot.W, Orbwalk.GetAutoAttackRange());
             E = new Spell(SpellSlot.E, 375);
             R = new Spell(SpellSlot.R);
             Q.SetTargetted(0.5f, float.MaxValue);
             W.SetTargetted(0.2333f, float.MaxValue);
 
-            var ChampMenu = new Menu("Plugin", PlayerName + "_Plugin");
+            var champMenu = new Menu("Plugin", PlayerName + "_Plugin");
             {
-                var ComboMenu = new Menu("Combo", "Combo");
+                var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(ComboMenu, "Q", "Use Q");
-                    AddItem(ComboMenu, "W", "Use W");
-                    AddItem(ComboMenu, "E", "Use E");
-                    AddItem(ComboMenu, "ECountA", "-> Cancel If Enemy Above", 2, 1, 5);
-                    AddItem(ComboMenu, "R", "Use R");
-                    AddItem(ComboMenu, "RHpU", "-> If Player Hp Under", 60);
-                    AddItem(ComboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
-                    ChampMenu.AddSubMenu(ComboMenu);
+                    AddItem(comboMenu, "Q", "Use Q");
+                    AddItem(comboMenu, "W", "Use W");
+                    AddItem(comboMenu, "E", "Use E");
+                    AddItem(comboMenu, "ECountA", "-> Cancel If Enemy Above", 2, 1, 5);
+                    AddItem(comboMenu, "R", "Use R");
+                    AddItem(comboMenu, "RHpU", "-> If Player Hp Under", 60);
+                    AddItem(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    champMenu.AddSubMenu(comboMenu);
                 }
-                var HarassMenu = new Menu("Harass", "Harass");
+                var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(HarassMenu, "Q", "Use Q");
-                    AddItem(HarassMenu, "QHpA", "-> If Hp Above", 20);
-                    AddItem(HarassMenu, "W", "Use W");
-                    AddItem(HarassMenu, "E", "Use E");
-                    AddItem(HarassMenu, "R", "Save Q/W For Third R");
-                    ChampMenu.AddSubMenu(HarassMenu);
+                    AddItem(harassMenu, "Q", "Use Q");
+                    AddItem(harassMenu, "QHpA", "-> If Hp Above", 20);
+                    AddItem(harassMenu, "W", "Use W");
+                    AddItem(harassMenu, "E", "Use E");
+                    champMenu.AddSubMenu(harassMenu);
                 }
-                var ClearMenu = new Menu("Lane/Jungle Clear", "Clear");
+                var clearMenu = new Menu("Clear", "Clear");
                 {
-                    var SmiteMob = new Menu("Smite Mob If Killable", "SmiteMob");
+                    AddSmiteMobMenu(clearMenu);
+                    AddItem(clearMenu, "Q", "Use Q");
+                    AddItem(clearMenu, "W", "Use W");
+                    AddItem(clearMenu, "E", "Use E");
+                    AddItem(clearMenu, "Item", "Use Tiamat/Hydra");
+                    champMenu.AddSubMenu(clearMenu);
+                }
+                var lastHitMenu = new Menu("Last Hit", "LastHit");
+                {
+                    AddItem(lastHitMenu, "W", "Use W");
+                    champMenu.AddSubMenu(lastHitMenu);
+                }
+                var fleeMenu = new Menu("Flee", "Flee");
+                {
+                    AddItem(fleeMenu, "Q", "Use Q");
+                    AddItem(fleeMenu, "PinkWard", "-> Ward Jump Use Pink Ward", false);
+                    champMenu.AddSubMenu(fleeMenu);
+                }
+                var miscMenu = new Menu("Misc", "Misc");
+                {
+                    var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(SmiteMob, "Smite", "Use Smite");
-                        AddItem(SmiteMob, "Baron", "-> Baron Nashor");
-                        AddItem(SmiteMob, "Dragon", "-> Dragon");
-                        AddItem(SmiteMob, "Red", "-> Red Brambleback");
-                        AddItem(SmiteMob, "Blue", "-> Blue Sentinel");
-                        AddItem(SmiteMob, "Krug", "-> Ancient Krug");
-                        AddItem(SmiteMob, "Gromp", "-> Gromp");
-                        AddItem(SmiteMob, "Raptor", "-> Crimson Raptor");
-                        AddItem(SmiteMob, "Wolf", "-> Greater Murk Wolf");
-                        ClearMenu.AddSubMenu(SmiteMob);
+                        AddItem(killStealMenu, "Q", "Use Q");
+                        AddItem(killStealMenu, "W", "Use W");
+                        AddItem(killStealMenu, "Ignite", "Use Ignite");
+                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        miscMenu.AddSubMenu(killStealMenu);
                     }
-                    AddItem(ClearMenu, "Q", "Use Q");
-                    AddItem(ClearMenu, "W", "Use W");
-                    AddItem(ClearMenu, "E", "Use E");
-                    AddItem(ClearMenu, "Item", "Use Tiamat/Hydra");
-                    ChampMenu.AddSubMenu(ClearMenu);
-                }
-                var LastHitMenu = new Menu("Last Hit", "LastHit");
-                {
-                    AddItem(LastHitMenu, "W", "Use W");
-                    ChampMenu.AddSubMenu(LastHitMenu);
-                }
-                var FleeMenu = new Menu("Flee", "Flee");
-                {
-                    AddItem(FleeMenu, "Q", "Use Q");
-                    AddItem(FleeMenu, "PinkWard", "-> Ward Jump Use Pink Ward", false);
-                    ChampMenu.AddSubMenu(FleeMenu);
-                }
-                var MiscMenu = new Menu("Misc", "Misc");
-                {
-                    var KillStealMenu = new Menu("Kill Steal", "KillSteal");
+                    var antiGapMenu = new Menu("Anti Gap Closer", "AntiGap");
                     {
-                        AddItem(KillStealMenu, "Q", "Use Q");
-                        AddItem(KillStealMenu, "Ignite", "Use Ignite");
-                        MiscMenu.AddSubMenu(KillStealMenu);
-                    }
-                    var AntiGapMenu = new Menu("Anti Gap Closer", "AntiGap");
-                    {
-                        AddItem(AntiGapMenu, "E", "Use E");
-                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy))
+                        AddItem(antiGapMenu, "E", "Use E");
+                        foreach (var spell in
+                            AntiGapcloser.Spells.FindAll(
+                                i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            foreach (var Spell in AntiGapcloser.Spells.Where(i => i.ChampionName == Obj.ChampionName)) AddItem(AntiGapMenu, Obj.ChampionName + "_" + Spell.Slot.ToString(), "-> Skill " + Spell.Slot.ToString() + " Of " + Obj.ChampionName);
+                            AddItem(
+                                antiGapMenu, spell.ChampionName + "_" + spell.Slot,
+                                "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
-                        MiscMenu.AddSubMenu(AntiGapMenu);
+                        miscMenu.AddSubMenu(antiGapMenu);
                     }
-                    var InterruptMenu = new Menu("Interrupt", "Interrupt");
+                    var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(InterruptMenu, "E", "Use E");
-                        foreach (var Obj in ObjectManager.Get<Obj_AI_Hero>().Where(i => i.IsEnemy))
+                        AddItem(interruptMenu, "E", "Use E");
+                        foreach (var spell in
+                            Interrupter.Spells.FindAll(
+                                i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            foreach (var Spell in Interrupter.Spells.Where(i => i.ChampionName == Obj.ChampionName)) AddItem(InterruptMenu, Obj.ChampionName + "_" + Spell.Slot.ToString(), "-> Skill " + Spell.Slot.ToString() + " Of " + Obj.ChampionName);
+                            AddItem(
+                                interruptMenu, spell.ChampionName + "_" + spell.Slot,
+                                "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
-                        MiscMenu.AddSubMenu(InterruptMenu);
+                        miscMenu.AddSubMenu(interruptMenu);
                     }
-                    ChampMenu.AddSubMenu(MiscMenu);
+                    champMenu.AddSubMenu(miscMenu);
                 }
-                var DrawMenu = new Menu("Draw", "Draw");
+                var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(DrawMenu, "Q", "Q Range", false);
-                    AddItem(DrawMenu, "E", "E Range", false);
-                    ChampMenu.AddSubMenu(DrawMenu);
+                    AddItem(drawMenu, "Q", "Q Range", false);
+                    AddItem(drawMenu, "E", "E Range", false);
+                    champMenu.AddSubMenu(drawMenu);
                 }
-                MainMenu.AddSubMenu(ChampMenu);
+                MainMenu.AddSubMenu(champMenu);
             }
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
-            Obj_AI_Hero.OnProcessSpellCast += OnProcessSpellCast;
-            Orbwalk.BeforeAttack += BeforeAttack;
             Orbwalk.AfterAttack += AfterAttack;
         }
 
@@ -128,220 +121,386 @@ namespace BrianSharp.Plugin
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
-                if (Player.IsDead) RCount = 0;
                 return;
             }
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
+            switch (Orbwalk.CurrentMode)
             {
-                NormalCombo(Orbwalk.CurrentMode.ToString());
+                case Orbwalker.Mode.Combo:
+                    Fight("Combo");
+                    break;
+                case Orbwalker.Mode.Harass:
+                    Fight("Harass");
+                    break;
+                case Orbwalker.Mode.Clear:
+                    Clear();
+                    break;
+                case Orbwalker.Mode.LastHit:
+                    LastHit();
+                    break;
+                case Orbwalker.Mode.Flee:
+                    Flee(Game.CursorPos);
+                    break;
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear)
-            {
-                LaneJungClear();
-            }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit)
-            {
-                LastHit();
-            }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.Flee) Flee(Game.CursorPos);
             KillSteal();
         }
 
         private void OnDraw(EventArgs args)
         {
-            if (Player.IsDead) return;
-            if (GetValue<bool>("Draw", "Q") && Q.Level > 0) Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
-            if (GetValue<bool>("Draw", "E") && E.Level > 0) Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            if (Player.IsDead)
+            {
+                return;
+            }
+            if (GetValue<bool>("Draw", "Q") && Q.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.Green : Color.Red);
+            }
+            if (GetValue<bool>("Draw", "E") && E.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            }
         }
 
         private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (Player.IsDead || !GetValue<bool>("AntiGap", "E") || !GetValue<bool>("AntiGap", gapcloser.Sender.ChampionName + "_" + gapcloser.Slot.ToString()) || !E.CanCast(gapcloser.Sender)) return;
-            if (!Player.HasBuff("JaxEvasion"))
+            if (Player.IsDead || !GetValue<bool>("AntiGap", "E") ||
+                !GetValue<bool>("AntiGap", gapcloser.Sender.ChampionName + "_" + gapcloser.Slot) ||
+                !E.CanCast(gapcloser.Sender))
             {
-                if (E.Cast(PacketCast) && E.Cast(PacketCast)) return;
+                return;
             }
-            else if (E.Cast(PacketCast)) return;
+            E.Cast(PacketCast);
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
-            if (Player.IsDead || !GetValue<bool>("Interrupt", "E") || !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot.ToString()) || !E.IsReady()) return;
-            if (E.IsInRange(unit))
-            {
-                if (!Player.HasBuff("JaxEvasion"))
-                {
-                    if (E.Cast(PacketCast) && E.Cast(PacketCast)) return;
-                }
-                else if (E.Cast(PacketCast)) return;
-            }
-            else if (Q.CanCast(unit) && Player.Mana >= Q.Instance.ManaCost + (Player.HasBuff("JaxEvasion") ? 0 : E.Instance.ManaCost) && Q.CastOnUnit(unit, PacketCast)) return;
-        }
-
-        private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
-        {
-            if (!sender.IsMe) return;
-            if (args.SData.Name == "jaxrelentlessattack") RCount = 0;
-        }
-
-        private void BeforeAttack(Orbwalk.BeforeAttackEventArgs Args)
-        {
-            if (!W.IsReady()) return;
-            if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && GetValue<bool>("LastHit", "W") && Args.Target is Obj_AI_Minion && CanKill((Obj_AI_Minion)Args.Target, W, GetBonusDmg((Obj_AI_Minion)Args.Target)) && W.Cast(PacketCast)) return;
-        }
-
-        private void AfterAttack(AttackableUnit Target)
-        {
-            if (R.Level > 0) RCount += 1;
-            if (!W.IsReady()) return;
-            if ((Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass) && GetValue<bool>(Orbwalk.CurrentMode.ToString(), "W") && Target is Obj_AI_Hero && W.Cast(PacketCast) && Player.IssueOrder(GameObjectOrder.AttackUnit, Target))
+            if (Player.IsDead || !GetValue<bool>("Interrupt", "E") ||
+                !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !E.IsReady())
             {
                 return;
             }
-            else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear && GetValue<bool>("Clear", "W") && Target is Obj_AI_Minion && W.Cast(PacketCast) && Player.IssueOrder(GameObjectOrder.AttackUnit, Target)) return;
+            if (E.IsInRange(unit))
+            {
+                E.Cast(PacketCast);
+            }
+            else if (Q.CanCast(unit) &&
+                     Player.Mana >= Q.Instance.ManaCost + (Player.HasBuff("JaxEvasion") ? 0 : E.Instance.ManaCost))
+            {
+                Q.CastOnUnit(unit, PacketCast);
+            }
         }
 
-        private void NormalCombo(string Mode)
+        private void AfterAttack(AttackableUnit target)
         {
-            if (GetValue<bool>(Mode, "E") && E.IsReady() && (Mode == "Combo" || (Mode == "Harass" && (!GetValue<bool>(Mode, "R") || (GetValue<bool>(Mode, "R") && (R.Level == 0 || (R.Level > 0 && !W.IsReady() && !Q.IsReady())))))))
+            if (!W.IsReady())
+            {
+                return;
+            }
+            if ((((Orbwalk.CurrentMode == Orbwalker.Mode.Combo || Orbwalk.CurrentMode == Orbwalker.Mode.Harass) &&
+                  target is Obj_AI_Hero) || (Orbwalk.CurrentMode == Orbwalker.Mode.Clear && target is Obj_AI_Minion)) &&
+                GetValue<bool>(Orbwalk.CurrentMode.ToString(), "W") && W.Cast(PacketCast))
+            {
+                Player.IssueOrder(GameObjectOrder.AttackUnit, target);
+            }
+        }
+
+        private void Fight(string mode)
+        {
+            if (GetValue<bool>(mode, "E") && E.IsReady())
             {
                 if (!Player.HasBuff("JaxEvasion"))
                 {
-                    if (GetValue<bool>(Mode, "Q") && Q.IsReady() && E.GetTarget() == null)
+                    if (GetValue<bool>(mode, "Q") && Q.IsReady() && E.GetTarget() == null)
                     {
-                        var Target = Q.GetTarget();
-                        if (Target != null && E.Cast(PacketCast) && Q.CastOnUnit(Target, PacketCast)) return;
-                    }
-                    else if (E.GetTarget() != null && E.Cast(PacketCast)) return;
-                }
-                else if ((Player.CountEnemiesInRange(E.Range) >= GetValue<Slider>(Mode, "ECountA").Value || (E.GetTarget() != null && Player.Distance(E.GetTarget(), true) >= Math.Pow(E.Range - 50, 2))) && E.Cast(PacketCast)) return;
-            }
-            if (Mode == "Harass" && GetValue<bool>(Mode, "R") && R.Level > 0 && GetValue<bool>(Mode, "W") && GetValue<bool>(Mode, "Q") && Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost)
-            {
-                if (RCount == 2 && W.IsReady() && Q.IsReady())
-                {
-                    var Target = Q.GetTarget();
-                    if (Target != null && W.Cast(PacketCast) && Q.CastOnUnit(Target, PacketCast)) return;
-                }
-            }
-            else
-            {
-                if (GetValue<bool>(Mode, "W") && W.IsReady() && GetValue<bool>(Mode, "Q") && Q.IsReady() && Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost)
-                {
-                    var Target = Q.GetTarget();
-                    if (Target != null && CanKill(Target, Q, Q.GetDamage(Target) + GetBonusDmg(Target)) && W.Cast(PacketCast) && Q.CastOnUnit(Target, PacketCast)) return;
-                }
-                if (GetValue<bool>(Mode, "Q") && Q.IsReady())
-                {
-                    var Target = Q.GetTarget();
-                    if (Target != null)
-                    {
-                        if (((Player.HasBuff("JaxEmpowerTwo") && CanKill(Target, Q, Q.GetDamage(Target) + GetBonusDmg(Target))) || CanKill(Target, Q)) && Q.CastOnUnit(Target, PacketCast))
+                        var target = Q.GetTarget();
+                        if (target != null && E.Cast(PacketCast) && Q.CastOnUnit(target, PacketCast))
                         {
                             return;
                         }
-                        else if (Mode == "Combo" || (Mode == "Harass" && Player.HealthPercentage() >= GetValue<Slider>(Mode, "QHpA").Value))
+                    }
+                    else if (E.GetTarget() != null && E.Cast(PacketCast))
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    var target = Orbwalk.GetPossibleTarget();
+                    if (target != null)
+                    {
+                        Player.IssueOrder(GameObjectOrder.AttackUnit, target);
+                    }
+                    if ((Player.CountEnemiesInRange(E.Range) >= GetValue<Slider>(mode, "ECountA").Value ||
+                         (E.GetTarget() != null && Player.Distance(E.GetTarget()) > E.Range - 50)) && E.Cast(PacketCast))
+                    {
+                        return;
+                    }
+                }
+            }
+            if (GetValue<bool>(mode, "W") && W.IsReady() && GetValue<bool>(mode, "Q") && Q.IsReady() &&
+                Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost)
+            {
+                var target = Q.GetTarget();
+                if (target != null && CanKill(target, Q, GetBonusDmg(target, Q.GetDamage(target))) && W.Cast(PacketCast) &&
+                    Q.CastOnUnit(target, PacketCast))
+                {
+                    return;
+                }
+            }
+            if (GetValue<bool>(mode, "Q") && Q.IsReady())
+            {
+                var target = Q.GetTarget();
+                if (target != null)
+                {
+                    if (
+                        CanKill(
+                            target, Q, Q.GetDamage(target) + (Player.HasBuff("EmpowerTwo") ? GetBonusDmg(target) : 0)) &&
+                        Q.CastOnUnit(target, PacketCast))
+                    {
+                        return;
+                    }
+                    if (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value)
+                    {
+                        if ((!Orbwalk.InAutoAttackRange(target, 30) ||
+                             (GetValue<bool>(mode, "E") && E.IsReady() && Player.HasBuff("JaxEvasion") &&
+                              !E.IsInRange(target))) && Q.CastOnUnit(target, PacketCast))
                         {
-                            if ((Player.Distance(Target, true) > Math.Pow(Orbwalk.GetAutoAttackRange(Player, Target) + 30, 2) || (GetValue<bool>(Mode, "E") && E.IsReady() && Player.HasBuff("JaxEvasion") && !E.IsInRange(Target))) && Q.CastOnUnit(Target, PacketCast)) return;
+                            return;
                         }
                     }
                 }
             }
-            if (Mode == "Combo" && GetValue<bool>(Mode, "R") && R.IsReady())
+            if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady())
             {
-                var RCount = GetValue<Slider>(Mode, "RCountA").Value;
-                if (((RCount > 1 && (Player.CountEnemiesInRange(Q.Range) >= RCount || Q.GetTarget() != null)) || (RCount == 1 && Q.GetTarget() != null)) && Player.HealthPercentage() < GetValue<Slider>(Mode, "RHpU").Value && R.Cast(PacketCast)) return;
+                var rCount = GetValue<Slider>(mode, "RCountA").Value;
+                if (((rCount > 1 && (Player.CountEnemiesInRange(Q.Range) >= rCount || Q.GetTarget() != null)) ||
+                     (rCount == 1 && Q.GetTarget() != null)) &&
+                    Player.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value)
+                {
+                    R.Cast(PacketCast);
+                }
             }
         }
 
-        private void LaneJungClear()
+        private void Clear()
         {
-            var minionObj = MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-            if (minionObj.Count == 0) return;
-            if (GetValue<bool>("Clear", "E") && E.IsReady() && !Player.HasBuff("JaxEvasion"))
+            SmiteMob();
+            var minionObj = MinionManager.GetMinions(
+                Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            if (minionObj.Count == 0)
             {
-                if (GetValue<bool>("Clear", "Q") && Q.IsReady() && minionObj.Count(i => E.IsInRange(i)) == 0)
+                return;
+            }
+            if (GetValue<bool>("Clear", "E") && E.IsReady())
+            {
+                if (!Player.HasBuff("JaxEvasion"))
                 {
-                    foreach (var Obj in minionObj)
+                    if (GetValue<bool>("Clear", "Q") && Q.IsReady() && minionObj.Count(i => E.IsInRange(i)) == 0)
                     {
-                        if (minionObj.Count(i => i.Distance(Obj, true) <= E.RangeSqr) > 1 && E.Cast(PacketCast) && Q.CastOnUnit(Obj, PacketCast)) return;
+                        if (
+                            minionObj.Any(
+                                i =>
+                                    minionObj.Count(a => a.Distance(i) <= E.Range) > 1 && E.Cast(PacketCast) &&
+                                    Q.CastOnUnit(i, PacketCast)))
+                        {
+                            return;
+                        }
+                    }
+                    else if ((minionObj.Count(i => i.MaxHealth >= 1200 && E.IsInRange(i)) > 0 ||
+                              minionObj.Count(i => E.IsInRange(i)) > 2) && E.Cast(PacketCast))
+                    {
+                        return;
                     }
                 }
-                else if ((minionObj.Count(i => i.MaxHealth >= 1200 && E.IsInRange(i)) > 0 || minionObj.Count(i => E.IsInRange(i)) > 2) && E.Cast(PacketCast)) return;
+                else
+                {
+                    var obj = Orbwalk.GetPossibleTarget();
+                    if (obj.IsValidTarget())
+                    {
+                        Player.IssueOrder(GameObjectOrder.AttackUnit, obj);
+                    }
+                }
             }
-            if (GetValue<bool>("Clear", "W") && W.IsReady() && GetValue<bool>("Clear", "Q") && Q.IsReady() && Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost)
+            if (GetValue<bool>("Clear", "W") && W.IsReady() && GetValue<bool>("Clear", "Q") && Q.IsReady() &&
+                Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost)
             {
-                var Obj = minionObj.Find(i => i.MaxHealth >= 1200 && CanKill(i, Q, Q.GetDamage(i) + GetBonusDmg(i)));
-                if (Obj != null && W.Cast(PacketCast) && Q.CastOnUnit(Obj, PacketCast)) return;
+                var obj =
+                    minionObj.Cast<Obj_AI_Minion>()
+                        .Find(i => i.MaxHealth >= 1200 && CanKill(i, Q, GetBonusDmg(i, Q.GetDamage(i))));
+                if (obj != null && W.Cast(PacketCast) && Q.CastOnUnit(obj, PacketCast))
+                {
+                    return;
+                }
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var Obj = minionObj.Find(i => i.MaxHealth >= 1200 && ((Player.HasBuff("JaxEmpowerTwo") && CanKill(i, Q, Q.GetDamage(i) + GetBonusDmg(i))) || CanKill(i, Q)));
-                if (Obj == null && (minionObj.Count(i => Player.Distance(i, true) <= Math.Pow(Orbwalk.GetAutoAttackRange(Player, i) + 40, 2)) == 0 || (GetValue<bool>("Clear", "E") && E.IsReady() && Player.HasBuff("JaxEvasion") && minionObj.Count(i => E.IsInRange(i)) == 0))) Obj = minionObj.MinOrDefault(i => i.Health);
-                if (Obj != null && Q.CastOnUnit(Obj, PacketCast)) return;
+                var obj =
+                    (Obj_AI_Base)
+                        minionObj.Cast<Obj_AI_Minion>()
+                            .Find(
+                                i =>
+                                    i.MaxHealth >= 1200 &&
+                                    CanKill(i, Q, Q.GetDamage(i) + (Player.HasBuff("EmpowerTwo") ? GetBonusDmg(i) : 0)));
+                if (obj == null &&
+                    (minionObj.Count(i => Orbwalk.InAutoAttackRange(i, 40)) == 0 ||
+                     (GetValue<bool>("Clear", "E") && E.IsReady() && Player.HasBuff("JaxEvasion") &&
+                      minionObj.Count(i => E.IsInRange(i)) == 0)))
+                {
+                    obj = minionObj.MinOrDefault(i => i.Health);
+                }
+                if (obj != null && Q.CastOnUnit(obj, PacketCast))
+                {
+                    return;
+                }
             }
             if (GetValue<bool>("Clear", "Item"))
             {
-                var Item = Hydra.IsReady() ? Hydra : Tiamat;
-                if (Item.IsReady() && (minionObj.Count(i => Item.IsInRange(i)) > 2 || minionObj.Any(i => i.MaxHealth >= 1200 && i.Distance(Player, true) <= Math.Pow(Item.Range - 80, 2))) && Item.Cast()) return;
-            }
-            if (GetValue<bool>("SmiteMob", "Smite") && Smite.IsReady())
-            {
-                var Obj = minionObj.Find(i => i.Team == GameObjectTeam.Neutral && CanSmiteMob(i.Name));
-                if (Obj != null && CastSmite(Obj)) return;
+                var item = Hydra.IsReady() ? Hydra : Tiamat;
+                if (item.IsReady() &&
+                    (minionObj.Count(i => item.IsInRange(i)) > 2 ||
+                     minionObj.Any(i => i.MaxHealth >= 1200 && i.Distance(Player) < item.Range - 80)))
+                {
+                    item.Cast();
+                }
             }
         }
 
         private void LastHit()
         {
-            if (!GetValue<bool>("LastHit", "W") || !W.IsReady() || !Player.HasBuff("JaxEmpowerTwo")) return;
-            var minionObj = MinionManager.GetMinions(Orbwalk.GetAutoAttackRange() + 50, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth).FindAll(i => CanKill(i, W, GetBonusDmg(i)));
-            if (minionObj.Count == 0 || Player.IssueOrder(GameObjectOrder.AttackUnit, minionObj.First())) return;
+            if (!GetValue<bool>("LastHit", "W") || (!W.IsReady() && !Player.HasBuff("EmpowerTwo")))
+            {
+                return;
+            }
+            var obj =
+                MinionManager.GetMinions(W.Range + 100, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                    .Cast<Obj_AI_Minion>()
+                    .FindAll(i => Orbwalk.InAutoAttackRange(i))
+                    .Find(i => CanKill(i, W, GetBonusDmg(i)));
+            if (obj == null)
+            {
+                return;
+            }
+            if (!Player.HasBuff("EmpowerTwo"))
+            {
+                W.Cast(PacketCast);
+            }
+            Orbwalk.Move = false;
+            Utility.DelayAction.Add(80, () => Orbwalk.Move = true);
+            Player.IssueOrder(GameObjectOrder.AttackUnit, obj);
         }
 
-        private bool Flee(Vector3 Pos)
+        private void Flee(Vector3 pos)
         {
-            if (!GetValue<bool>("Flee", "Q") || !Q.IsReady()) return false;
-            var JumpPos = Pos;
-            if (GetWardSlot() != null && !WardCasted && Player.Distance(Pos) > GetWardRange()) JumpPos = Player.Position.Extend(Pos, GetWardRange());
-            var Obj = ObjectManager.Get<Obj_AI_Base>().FindAll(i => !i.IsMe && !(i is Obj_AI_Turret) && i.IsValidTarget(Q.Range + i.BoundingRadius, false) && i.Distance(WardCasted ? WardPlacePos : JumpPos) < 200).MinOrDefault(i => i.Distance(WardCasted ? WardPlacePos : JumpPos));
-            if (Obj != null && Q.CastOnUnit(Obj, PacketCast)) return true;
-            if (GetWardSlot() != null && !WardCasted)
+            if (!GetValue<bool>("Flee", "Q") || !Q.IsReady())
             {
-                Player.Spellbook.CastSpell(GetWardSlot().SpellSlot, JumpPos);
-                WardPlacePos = JumpPos;
-                Utility.DelayAction.Add(800, () => WardPlacePos = default(Vector3));
-                WardCasted = true;
-                Utility.DelayAction.Add(800, () => WardCasted = false);
-                return false;
+                return;
             }
-            return false;
+            Obj_AI_Base obj;
+            Vector3[] jumpPos = { Player.Distance(pos) > Q.Range ? Player.ServerPosition.Extend(pos, Q.Range) : pos };
+            if (_wardCasted && _wardPlacePos.IsValid())
+            {
+                obj =
+                    ObjectManager.Get<Obj_AI_Minion>()
+                        .Find(i => i.IsAlly && i.Distance(_wardPlacePos) < 200 && i.Name.ToLower().Contains("ward"));
+            }
+            else
+            {
+                obj =
+                    HeroManager.AllHeroes.FindAll(
+                        i =>
+                            !i.IsMe && i.IsValidTarget(Q.Range + i.BoundingRadius, false) &&
+                            i.Distance(jumpPos[0]) < 200).MinOrDefault(i => i.Distance(jumpPos[0])) ??
+                    (Obj_AI_Base)
+                        ObjectManager.Get<Obj_AI_Minion>()
+                            .FindAll(
+                                i => i.IsValidTarget(Q.Range + i.BoundingRadius, false) && i.Distance(jumpPos[0]) < 200)
+                            .MinOrDefault(i => i.Distance(jumpPos[0]));
+            }
+            if (obj != null && Q.CastOnUnit(obj, PacketCast))
+            {
+                return;
+            }
+            jumpPos[0] = Player.Distance(pos) > GetWardRange() ? Player.ServerPosition.Extend(pos, GetWardRange()) : pos;
+            if (GetWardSlot() != null && !_wardCasted && Player.Spellbook.CastSpell(GetWardSlot().SpellSlot, jumpPos[0]))
+            {
+                _wardPlacePos = jumpPos[0];
+                _wardCasted = true;
+                Utility.DelayAction.Add(
+                    500, () =>
+                    {
+                        _wardPlacePos = new Vector3();
+                        _wardCasted = false;
+                    });
+            }
         }
 
         private void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
-                var Target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
-                if (Target != null && CastIgnite(Target)) return;
+                var target = TargetSelector.GetTarget(600, TargetSelector.DamageType.True);
+                if (target != null && CastIgnite(target))
+                {
+                    return;
+                }
+            }
+            if (GetValue<bool>("KillSteal", "Smite") &&
+                (CurrentSmiteType == SmiteType.Blue || CurrentSmiteType == SmiteType.Red))
+            {
+                var target = TargetSelector.GetTarget(760, TargetSelector.DamageType.True);
+                if (target != null && CastSmite(target))
+                {
+                    return;
+                }
+            }
+            if (GetValue<bool>("KillSteal", "W") && (W.IsReady() || Player.HasBuff("EmpowerTwo")))
+            {
+                var target = Orbwalk.GetBestHeroTarget();
+                if (target != null && CanKill(target, W, GetBonusDmg(target)))
+                {
+                    if (!Player.HasBuff("EmpowerTwo"))
+                    {
+                        W.Cast(PacketCast);
+                    }
+                    Orbwalk.Move = false;
+                    Utility.DelayAction.Add(80, () => Orbwalk.Move = true);
+                    Player.IssueOrder(GameObjectOrder.AttackUnit, target);
+                }
             }
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
-                var Target = Q.GetTarget();
-                if (Target != null && CanKill(Target, Q, Q.GetDamage(Target) + ((!CanKill(Target, Q) && ((W.IsReady() && Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost) || Player.HasBuff("JaxEmpowerTwo"))) ? GetBonusDmg(Target) : 0)))
+                var target = Q.GetTarget();
+                if (target != null)
                 {
-                    if (W.IsReady() && !CanKill(Target, Q) && Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost && W.Cast(PacketCast) && Q.CastOnUnit(Target, PacketCast)) return;
-                    if (((!CanKill(Target, Q) && Player.HasBuff("JaxEmpowerTwo")) || CanKill(Target, Q)) && Q.CastOnUnit(Target, PacketCast)) return;
+                    if (W.IsReady() && Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost &&
+                        CanKill(target, Q, GetBonusDmg(target, Q.GetDamage(target))) && W.Cast(PacketCast) &&
+                        Q.CastOnUnit(target, PacketCast))
+                    {
+                        return;
+                    }
+                    if (CanKill(
+                        target, Q, Q.GetDamage(target) + (Player.HasBuff("EmpowerTwo") ? GetBonusDmg(target) : 0)))
+                    {
+                        Q.CastOnUnit(target, PacketCast);
+                    }
                 }
             }
         }
 
-        private double GetBonusDmg(Obj_AI_Base Target)
+        private double GetBonusDmg(Obj_AI_Base target, double subDmg = 0)
         {
-            double DmgItem = 0;
-            if (Sheen.IsOwned() && ((Sheen.IsReady() && W.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage > DmgItem) DmgItem = Player.BaseAttackDamage;
-            if (Trinity.IsOwned() && ((Trinity.IsReady() && W.IsReady()) || Player.HasBuff("Sheen")) && Player.BaseAttackDamage * 2 > DmgItem) DmgItem = Player.BaseAttackDamage * 2;
-            return ((W.IsReady() || Player.HasBuff("JaxEmpowerTwo")) ? W.GetDamage(Target) : 0) + (RCount == 2 ? R.GetDamage(Target) : 0) + Player.GetAutoAttackDamage(Target, true) + Player.CalcDamage(Target, Damage.DamageType.Physical, DmgItem);
+            double dmgItem = 0;
+            if (Sheen.IsOwned() && (Sheen.IsReady() || Player.HasBuff("Sheen")) && Player.BaseAttackDamage > dmgItem)
+            {
+                dmgItem = Player.BaseAttackDamage;
+            }
+            if (Trinity.IsOwned() && (Trinity.IsReady() || Player.HasBuff("Sheen")) &&
+                Player.BaseAttackDamage * 2 > dmgItem)
+            {
+                dmgItem = Player.BaseAttackDamage * 2;
+            }
+            return (W.IsReady() || Player.HasBuff("EmpowerTwo") ? W.GetDamage(target) : 0) +
+                   Player.GetAutoAttackDamage(target, true) +
+                   (dmgItem > 0 ? Player.CalcDamage(target, Damage.DamageType.Physical, dmgItem) : 0) + subDmg;
         }
     }
 }
