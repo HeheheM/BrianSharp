@@ -66,7 +66,7 @@ namespace BrianSharp.Plugin
                         AddItem(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
-                    AddItem(miscMenu, "RTower", "Use R If Enemy Under Tower");
+                    AddItem(miscMenu, "RTower", "Auto R If Enemy Under Tower");
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");

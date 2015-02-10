@@ -299,7 +299,8 @@ namespace BrianSharp.Plugin
 
         private void Flee()
         {
-            if (GetValue<bool>("Flee", "Q") && Q.IsReady() && Q.Cast(Game.CursorPos, PacketCast))
+            if (GetValue<bool>("Flee", "Q") && Q.IsReady() &&
+                Q.Cast(Player.ServerPosition.Extend(Game.CursorPos, Q.Range), PacketCast))
             {
                 return;
             }

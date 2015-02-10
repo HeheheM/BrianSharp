@@ -224,7 +224,7 @@ namespace BrianSharp.Plugin
                 }
                 else
                 {
-                    var target = Orbwalk.GetPossibleTarget();
+                    var target = Orbwalk.GetBestHeroTarget();
                     if (target != null)
                     {
                         Player.IssueOrder(GameObjectOrder.AttackUnit, target);

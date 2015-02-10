@@ -97,7 +97,7 @@ namespace BrianSharp.Plugin
                         miscMenu.AddSubMenu(interruptMenu);
                     }
                     AddItem(miscMenu, "Gank", "Gank", "Z");
-                    AddItem(miscMenu, "WTower", "Use W If Enemy Under Tower");
+                    AddItem(miscMenu, "WTower", "Auto W If Enemy Under Tower");
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");

@@ -11,6 +11,10 @@
     <AssemblyName>Brian Sharp</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PreBuildEvent />
+    <PostBuildEvent />
+    <OutputPath>bin\Release</OutputPath>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -23,12 +27,8 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <PreBuildEvent />
-    <PostBuildEvent />
-    <OutputPath>bin\Release</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -48,6 +48,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="LeagueSharp">
@@ -71,7 +72,6 @@
   <ItemGroup>
     <Compile Include="Common\Helper.cs" />
     <Compile Include="Common\Orbwalker.cs" />
-    <Compile Include="Common\Survive.cs" />
     <Compile Include="Plugin\Aatrox.cs" />
     <Compile Include="Plugin\Amumu.cs" />
     <Compile Include="Plugin\DrMundo.cs" />
@@ -82,7 +82,10 @@
     <Compile Include="Plugin\Lucian.cs" />
     <Compile Include="Plugin\Maokai.cs" />
     <Compile Include="Plugin\Nasus.cs" />
+    <Compile Include="Plugin\Rammus.cs" />
+    <Compile Include="Plugin\Ryze.cs" />
     <Compile Include="Plugin\Shen.cs" />
+    <Compile Include="Plugin\Tryndamere.cs" />
     <Compile Include="Plugin\Udyr.cs" />
     <Compile Include="Plugin\Warwick.cs" />
     <Compile Include="Plugin\XinZhao.cs" />

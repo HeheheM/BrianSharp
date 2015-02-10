@@ -343,7 +343,8 @@ namespace BrianSharp.Plugin
         private void Flee()
         {
             if (GetValue<bool>("Flee", "EQ") && Q.IsReady() && E.IsReady() &&
-                Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost && E.Cast(Game.CursorPos, PacketCast) &&
+                Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost &&
+                E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast) &&
                 Q.Cast(Game.CursorPos, PacketCast))
             {
                 return;

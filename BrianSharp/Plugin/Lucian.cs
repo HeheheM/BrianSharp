@@ -41,7 +41,7 @@ namespace BrianSharp.Plugin
                     AddItem(comboMenu, "WPred", "-> Prediction", false);
                     AddItem(comboMenu, "E", "Use E");
                     AddItem(comboMenu, "EGap", "-> Gap Closer");
-                    AddItem(comboMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 0, 1000);
+                    AddItem(comboMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 100, 1000);
                     AddItem(comboMenu, "EMode", "-> Mode", new[] { "Safe", "Mouse", "Chase" });
                     AddItem(comboMenu, "EModeKey", "--> Key Switch", "Z", KeyBindType.Toggle).ValueChanged +=
                         ComboEModeChanged;
@@ -67,7 +67,7 @@ namespace BrianSharp.Plugin
                     AddItem(clearMenu, "Q", "Use Q");
                     AddItem(clearMenu, "W", "Use W");
                     AddItem(clearMenu, "E", "Use E");
-                    AddItem(clearMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 0, 1000);
+                    AddItem(clearMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 100, 1000);
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");

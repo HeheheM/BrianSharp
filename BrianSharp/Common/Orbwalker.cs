@@ -54,23 +54,23 @@ namespace BrianSharp.Common
         {
             get
             {
-                if (_config.Item("OW_Combo_Key").GetValue<KeyBind>().Active)
+                if (_config.Item("OW_Combo_Key").IsActive())
                 {
                     return Mode.Combo;
                 }
-                if (_config.Item("OW_Harass_Key").GetValue<KeyBind>().Active)
+                if (_config.Item("OW_Harass_Key").IsActive())
                 {
                     return Mode.Harass;
                 }
-                if (_config.Item("OW_Clear_Key").GetValue<KeyBind>().Active)
+                if (_config.Item("OW_Clear_Key").IsActive())
                 {
                     return Mode.Clear;
                 }
-                if (_config.Item("OW_LastHit_Key").GetValue<KeyBind>().Active)
+                if (_config.Item("OW_LastHit_Key").IsActive())
                 {
                     return Mode.LastHit;
                 }
-                return _config.Item("OW_Flee_Key").GetValue<KeyBind>().Active ? Mode.Flee : Mode.None;
+                return _config.Item("OW_Flee_Key").IsActive() ? Mode.Flee : Mode.None;
             }
         }
 
@@ -203,12 +203,12 @@ namespace BrianSharp.Common
             {
                 return;
             }
-            if (_config.Item("OW_Draw_AARange").GetValue<Circle>().Active)
+            if (_config.Item("OW_Draw_AARange").IsActive())
             {
                 Render.Circle.DrawCircle(
                     Player.Position, GetAutoAttackRange(), _config.Item("OW_Draw_AARange").GetValue<Circle>().Color);
             }
-            if (_config.Item("OW_Draw_AARangeEnemy").GetValue<Circle>().Active)
+            if (_config.Item("OW_Draw_AARangeEnemy").IsActive())
             {
                 foreach (var obj in HeroManager.Enemies.FindAll(i => i.IsValidTarget(1000)))
                 {
@@ -217,22 +217,21 @@ namespace BrianSharp.Common
                         _config.Item("OW_Draw_AARangeEnemy").GetValue<Circle>().Color);
                 }
             }
-            if (_config.Item("OW_Draw_HoldZone").GetValue<Circle>().Active)
+            if (_config.Item("OW_Draw_HoldZone").IsActive())
             {
                 Render.Circle.DrawCircle(
                     Player.Position, _config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value,
                     _config.Item("OW_Draw_HoldZone").GetValue<Circle>().Color);
             }
-            if (_config.Item("OW_Draw_HpBar").GetValue<Circle>().Active ||
-                _config.Item("OW_Draw_LastHit").GetValue<Circle>().Active ||
-                _config.Item("OW_Draw_NearKill").GetValue<Circle>().Active)
+            if (_config.Item("OW_Draw_HpBar").IsActive() || _config.Item("OW_Draw_LastHit").IsActive() ||
+                _config.Item("OW_Draw_NearKill").IsActive())
             {
                 foreach (var obj in
                     MinionManager.GetMinions(
                         GetAutoAttackRange() + 300, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                         .Cast<Obj_AI_Minion>())
                 {
-                    if (_config.Item("OW_Draw_HpBar").GetValue<Circle>().Active)
+                    if (_config.Item("OW_Draw_HpBar").IsActive())
                     {
                         var killHit = Math.Ceiling(obj.MaxHealth / Player.GetAutoAttackDamage(obj, true));
                         var hpBarWidth = obj.HasBuff("turretshield", true) ? 70 : (obj.IsMelee() ? 75 : 80);
@@ -245,13 +244,13 @@ namespace BrianSharp.Common
                                 _config.Item("OW_Draw_HpBar").GetValue<Circle>().Color);
                         }
                     }
-                    if (_config.Item("OW_Draw_LastHit").GetValue<Circle>().Active &&
+                    if (_config.Item("OW_Draw_LastHit").IsActive() &&
                         obj.Health <= Player.GetAutoAttackDamage(obj, true))
                     {
                         Render.Circle.DrawCircle(
                             obj.Position, obj.BoundingRadius, _config.Item("OW_Draw_LastHit").GetValue<Circle>().Color);
                     }
-                    else if (_config.Item("OW_Draw_NearKill").GetValue<Circle>().Active &&
+                    else if (_config.Item("OW_Draw_NearKill").IsActive() &&
                              obj.Health <= Player.GetAutoAttackDamage(obj, true) * 2)
                     {
                         Render.Circle.DrawCircle(
@@ -277,29 +276,25 @@ namespace BrianSharp.Common
                 return;
             }
             var unit = (AttackableUnit) args.Target;
-            if (unit != null)
+            if (unit == null)
             {
-                _lastAttack = Environment.TickCount - Game.Ping / 2;
-                if (unit.IsValid)
-                {
-                    FireOnTargetSwitch(unit);
-                    _lastTarget = unit;
-                }
-                if (sender.IsMelee())
-                {
-                    Utility.DelayAction.Add(
-                        (int) (sender.AttackCastDelay * 1000 + 40), () => FireAfterAttack(_lastTarget));
-                }
-                FireOnAttack(_lastTarget);
+                return;
             }
+            _lastAttack = Environment.TickCount - Game.Ping / 2;
+            if (unit.IsValid)
+            {
+                FireOnTargetSwitch(unit);
+                _lastTarget = unit;
+            }
+            if (sender.IsMelee())
+            {
+                Utility.DelayAction.Add((int) (sender.AttackCastDelay * 1000 + 40), () => FireAfterAttack(_lastTarget));
+            }
+            FireOnAttack(_lastTarget);
         }
 
         private static void OnCreateObjMissile(GameObject sender, EventArgs args)
         {
-            if (sender is Obj_LampBulb)
-            {
-                return;
-            }
             if (!sender.IsValid<Obj_SpellMissile>())
             {
                 return;
@@ -336,12 +331,13 @@ namespace BrianSharp.Common
             {
                 if (Player.Path.Count() > 1)
                 {
+                    Player.IssueOrder((GameObjectOrder) 10, Player.ServerPosition);
                     Player.IssueOrder(GameObjectOrder.HoldPosition, Player.ServerPosition);
                 }
                 return;
             }
             Player.IssueOrder(
-                GameObjectOrder.MoveTo, Player.ServerPosition.Extend(pos, (RandomPos.NextFloat(0.6f, 1) + 0.2f) * 200));
+                GameObjectOrder.MoveTo, Player.ServerPosition.Extend(pos, (RandomPos.NextFloat(0.6f, 1) + 0.2f) * 300));
         }
 
         public static void Orbwalk(AttackableUnit target)
@@ -353,7 +349,7 @@ namespace BrianSharp.Common
                 if (!_disableNextAttack)
                 {
                     if (CurrentMode != Mode.Harass || !(target is Obj_AI_Minion) ||
-                        _config.Item("OW_Harass_LastHit").GetValue<bool>())
+                        _config.Item("OW_Harass_LastHit").IsActive())
                     {
                         Player.IssueOrder(GameObjectOrder.AttackUnit, target);
                         if (_lastTarget != null && _lastTarget.IsValid && _lastTarget != target)
@@ -370,8 +366,7 @@ namespace BrianSharp.Common
                 return;
             }
             if (Player.IsMelee() && Player.AttackRange < 200 && InAutoAttackRange(target) && target is Obj_AI_Hero &&
-                _config.Item("OW_Misc_MeleeMagnet").GetValue<bool>() &&
-                ((Obj_AI_Hero) target).Distance(Game.CursorPos) < 300)
+                _config.Item("OW_Misc_MeleeMagnet").IsActive() && ((Obj_AI_Hero) target).Distance(Game.CursorPos) < 300)
             {
                 _movePrediction.Delay = Player.BasicAttack.SpellCastTime;
                 _movePrediction.Speed = Player.BasicAttack.MissileSpeed;
@@ -390,35 +385,35 @@ namespace BrianSharp.Common
 
         private static bool IsAllowedToAttack()
         {
-            if (!Attack || _config.Item("OW_Misc_AllAttackDisabled").GetValue<bool>())
+            if (!Attack || _config.Item("OW_Misc_AllAttackDisabled").IsActive())
             {
                 return false;
             }
             if ((CurrentMode == Mode.Combo || CurrentMode == Mode.Harass || CurrentMode == Mode.Clear) &&
-                !_config.Item("OW_" + CurrentMode + "_Attack").GetValue<bool>())
+                !_config.Item("OW_" + CurrentMode + "_Attack").IsActive())
             {
                 return false;
             }
-            return CurrentMode != Mode.LastHit || _config.Item("OW_LastHit_Attack").GetValue<bool>();
+            return CurrentMode != Mode.LastHit || _config.Item("OW_LastHit_Attack").IsActive();
         }
 
         private static bool IsAllowedToMove()
         {
-            if (!Move || _config.Item("OW_Misc_AllMovementDisabled").GetValue<bool>())
+            if (!Move || _config.Item("OW_Misc_AllMovementDisabled").IsActive())
             {
                 return false;
             }
             if ((CurrentMode == Mode.Combo || CurrentMode == Mode.Harass || CurrentMode == Mode.Clear) &&
-                !_config.Item("OW_" + CurrentMode + "_Move").GetValue<bool>())
+                !_config.Item("OW_" + CurrentMode + "_Move").IsActive())
             {
                 return false;
             }
-            return CurrentMode != Mode.LastHit || _config.Item("OW_LastHit_Move").GetValue<bool>();
+            return CurrentMode != Mode.LastHit || _config.Item("OW_LastHit_Move").IsActive();
         }
 
         private static void CheckAutoWindUp()
         {
-            if (!_config.Item("OW_Misc_AutoWindUp").GetValue<bool>())
+            if (!_config.Item("OW_Misc_AutoWindUp").IsActive())
             {
                 _windUp = GetCurrentWindupTime;
                 return;
