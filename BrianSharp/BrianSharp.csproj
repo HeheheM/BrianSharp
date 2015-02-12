@@ -89,6 +89,7 @@
     <Compile Include="Plugin\Udyr.cs" />
     <Compile Include="Plugin\Warwick.cs" />
     <Compile Include="Plugin\XinZhao.cs" />
+    <Compile Include="Plugin\Yasuo.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

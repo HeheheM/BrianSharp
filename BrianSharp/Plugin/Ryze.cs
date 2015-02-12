@@ -16,9 +16,9 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 605);
             E = new Spell(SpellSlot.E, 605);
             R = new Spell(SpellSlot.R);
-            Q.SetTargetted(0, 1400);
-            W.SetTargetted(0, 500);
-            E.SetTargetted(0, 1000);
+            Q.SetTargetted(0.5f, 1400);
+            W.SetTargetted(0.5f, float.MaxValue);
+            E.SetTargetted(0.5f, 1000);
 
             var champMenu = new Menu("Plugin", PlayerName + "_Plugin");
             {

@@ -200,9 +200,10 @@ namespace BrianSharp.Plugin
                 return;
             }
             if (GetValue<bool>("Clear", "R") && R.IsReady() &&
-                (!GetValue<bool>("Clear", "Q") || Q.Level == 0 || (CurStance == Stance.Tiger && _aaCount > 2)))
+                (!GetValue<bool>("Clear", "Q") || Q.Level == 0 || (CurStance == Stance.Tiger && _aaCount > 2)) &&
+                R.Cast(PacketCast))
             {
-                R.Cast(PacketCast);
+                return;
             }
             if (GetValue<bool>("Clear", "Item"))
             {
@@ -288,7 +289,10 @@ namespace BrianSharp.Plugin
                 (CurrentSmiteType == SmiteType.Blue || CurrentSmiteType == SmiteType.Red))
             {
                 var target = TargetSelector.GetTarget(760, TargetSelector.DamageType.True);
-                if (target != null && CastSmite(target)) {}
+                if (target != null)
+                {
+                    CastSmite(target);
+                }
             }
         }
 

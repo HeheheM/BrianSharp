@@ -360,8 +360,9 @@ namespace BrianSharp.Plugin
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
                 Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
             {
-                Q.CastOnBestTarget(0, PacketCast).IsCasted();
+                return;
             }
+            Q.CastOnBestTarget(0, PacketCast);
         }
 
         private void KillSteal()
