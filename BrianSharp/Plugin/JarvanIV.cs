@@ -256,15 +256,18 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "R") && R.IsReady() && !_rCasted)
             {
-                var target =
-                    HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range))
-                        .Find(
-                            i =>
-                                (i.CountEnemiesInRange(325) > 1 && CanKill(i, R)) ||
-                                i.CountEnemiesInRange(325) >= GetValue<Slider>(mode, "RCountA").Value ||
-                                (i.CountEnemiesInRange(325) > 1 &&
-                                 HeroManager.Enemies.FindAll(a => a.IsValidTarget(325, true, i.ServerPosition))
-                                     .Count(a => a.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value) > 0));
+                var obj = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range));
+                var target = obj.Find(i => i.CountEnemiesInRange(325) > 1 && CanKill(i, R)) ??
+                             obj.Find(i => i.CountEnemiesInRange(325) >= GetValue<Slider>(mode, "RCountA").Value) ??
+                             obj.Find(
+                                 i =>
+                                     i.CountEnemiesInRange(325) > 1 &&
+                                     i.GetEnemiesInRange(325)
+                                         .FindAll(
+                                             a =>
+                                                 a.IsValidTarget() &&
+                                                 a.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value)
+                                         .Count > 0);
                 if (target != null && R.CastOnUnit(target, PacketCast))
                 {
                     return;
