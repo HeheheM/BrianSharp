@@ -27,10 +27,12 @@ namespace BrianSharp.Plugin
                 var comboMenu = new Menu("Combo", "Combo");
                 {
                     AddItem(comboMenu, "Q", "Use Q");
+                    AddItem(comboMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 880);
                     AddItem(comboMenu, "W", "Use W");
                     AddItem(comboMenu, "WHpU", "-> If Player Hp Under", 40);
                     AddItem(comboMenu, "WCountA", "-> If Enemy Above", 2, 1, 5);
                     AddItem(comboMenu, "E", "Use E");
+                    AddItem(comboMenu, "EQ", "-> Save E For EQ");
                     AddItem(comboMenu, "R", "Use R");
                     AddItem(comboMenu, "RHpU", "-> If Enemy Hp Under", 40);
                     AddItem(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
@@ -42,7 +44,9 @@ namespace BrianSharp.Plugin
                     AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
                     AddItem(harassMenu, "Q", "Use Q");
                     AddItem(harassMenu, "QHpA", "-> To Flag If Hp Above", 20);
+                    AddItem(harassMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 880);
                     AddItem(harassMenu, "E", "Use E");
+                    AddItem(harassMenu, "EQ", "-> Save E For EQ");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
@@ -185,7 +189,8 @@ namespace BrianSharp.Plugin
                 return;
             }
             if (Flag != null &&
-                (unit.Distance(Flag) <= 60 || (Player.Distance(unit) >= 50 && Q.WillHit(unit, Flag.ServerPosition, 110))))
+                (unit.Distance(Flag) <= 60 ||
+                 (Player.Distance(unit) >= 150 && Q.WillHit(unit, Flag.ServerPosition, 110))))
             {
                 Q.Cast(Flag.ServerPosition, PacketCast);
             }
@@ -208,6 +213,11 @@ namespace BrianSharp.Plugin
         {
             if (GetValue<bool>(mode, "E") && E.IsReady())
             {
+                if (GetValue<bool>(mode, "EQ") &&
+                    (Player.Mana < E.Instance.ManaCost + Q.Instance.ManaCost || !Q.IsReady()))
+                {
+                    return;
+                }
                 var target = E.GetTarget();
                 if (target != null &&
                     E.Cast(target.ServerPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast))
@@ -224,16 +234,20 @@ namespace BrianSharp.Plugin
                 (mode == "Combo" || (Flag == null || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value)))
             {
                 var target = Q.GetTarget();
-                if (GetValue<bool>(mode, "E") && Flag != null &&
-                    (target.Distance(Flag) <= 60 ||
-                     (Player.Distance(target) >= 50 && Q.WillHit(target, Flag.ServerPosition, 110))) &&
-                    Q.Cast(Flag.ServerPosition, PacketCast))
+                if (target != null)
                 {
-                    return;
-                }
-                if (Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
-                {
-                    return;
+                    if (GetValue<bool>(mode, "E") && Flag != null &&
+                        Player.Distance(Flag) <= GetValue<Slider>(mode, "QFlagRange").Value &&
+                        (target.Distance(Flag) <= 60 ||
+                         (Player.Distance(target) >= 150 && Q.WillHit(target, Flag.ServerPosition, 110))) &&
+                        Q.Cast(Flag.ServerPosition, PacketCast))
+                    {
+                        return;
+                    }
+                    if (Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
+                    {
+                        return;
+                    }
                 }
             }
             if (mode != "Combo")

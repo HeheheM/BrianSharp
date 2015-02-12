@@ -185,7 +185,7 @@ namespace BrianSharp.Plugin
             {
                 var target = Q.GetTarget();
                 if (target != null &&
-                    ((Player.Distance(target) > Q.Range - 100 && !target.IsFacing(Player)) ||
+                    ((Player.Distance(target) > Q.Range - 100 && !target.IsFacing(Player) && Player.IsFacing(target)) ||
                      target.HealthPercentage() > 60) && Q.CastOnUnit(target, PacketCast))
                 {
                     return;
