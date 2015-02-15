@@ -85,19 +85,6 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
-        {
-            if (!sender.Owner.IsMe)
-            {
-                return;
-            }
-            if (args.Slot == SpellSlot.Q || args.Slot == SpellSlot.W || args.Slot == SpellSlot.E ||
-                args.Slot == SpellSlot.R)
-            {
-                _aaCount = 0;
-            }
-        }
-
         private void OnGameUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
@@ -127,9 +114,23 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
+        private void OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
+        {
+            if (!sender.Owner.IsMe)
+            {
+                return;
+            }
+            if (args.Slot == SpellSlot.Q || args.Slot == SpellSlot.W || args.Slot == SpellSlot.E ||
+                args.Slot == SpellSlot.R)
+            {
+                _aaCount = 0;
+            }
+        }
+
         private void AfterAttack(AttackableUnit target)
         {
-            if ((Orbwalk.CurrentMode != Orbwalker.Mode.Combo && Orbwalk.CurrentMode != Orbwalker.Mode.Clear) ||
+            if (!target.IsValidTarget() ||
+                (Orbwalk.CurrentMode != Orbwalker.Mode.Combo && Orbwalk.CurrentMode != Orbwalker.Mode.Clear) ||
                 (CurStance != Stance.Tiger && CurStance != Stance.Phoenix && CurStance != Stance.Turtle))
             {
                 return;

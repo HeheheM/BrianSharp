@@ -275,20 +275,23 @@ namespace BrianSharp.Common
             {
                 return;
             }
-            var unit = (AttackableUnit) args.Target;
-            if (unit == null)
+            if (args.Target is Obj_AI_Base || args.Target is Obj_BarracksDampener || args.Target is Obj_HQ)
             {
-                return;
-            }
-            _lastAttack = Environment.TickCount - Game.Ping / 2;
-            if (unit.IsValid)
-            {
-                FireOnTargetSwitch(unit);
-                _lastTarget = unit;
-            }
-            if (sender.IsMelee())
-            {
-                Utility.DelayAction.Add((int) (sender.AttackCastDelay * 1000 + 40), () => FireAfterAttack(_lastTarget));
+                _lastAttack = Environment.TickCount - Game.Ping / 2;
+                var target = args.Target as Obj_AI_Base;
+                if (target != null)
+                {
+                    if (target.IsValid)
+                    {
+                        FireOnTargetSwitch(target);
+                        _lastTarget = target;
+                    }
+                    if (sender.IsMelee())
+                    {
+                        Utility.DelayAction.Add(
+                            (int) (sender.AttackCastDelay * 1000 + 40), () => FireAfterAttack(_lastTarget));
+                    }
+                }
             }
             FireOnAttack(_lastTarget);
         }

@@ -194,10 +194,10 @@ namespace BrianSharp.Plugin
                 if (R.IsReady())
                 {
                     var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range));
-                    if (((target.Count > 1 && target.Count(i => CanKill(i, R, GetRDmg(i))) > 0) ||
-                         target.Count >= GetValue<Slider>(mode, "RCountA").Value ||
-                         (target.Count > 1 &&
-                          target.Count(i => i.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value) > 0)))
+                    if ((target.Count > 1 && target.Count(i => CanKill(i, R, GetRDmg(i))) > 0) ||
+                        (target.Count > 1 &&
+                         target.Count(i => i.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value) > 0) ||
+                        target.Count >= GetValue<Slider>(mode, "RCountA").Value)
                     {
                         R.Cast(PacketCast);
                     }

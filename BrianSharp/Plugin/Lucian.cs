@@ -223,7 +223,7 @@ namespace BrianSharp.Plugin
 
         private void AfterAttack(AttackableUnit target)
         {
-            if (!E.IsReady() || !target.IsValidTarget())
+            if (!target.IsValidTarget() || !E.IsReady())
             {
                 return;
             }

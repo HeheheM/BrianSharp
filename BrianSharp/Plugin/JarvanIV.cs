@@ -258,7 +258,6 @@ namespace BrianSharp.Plugin
             {
                 var obj = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range));
                 var target = obj.Find(i => i.CountEnemiesInRange(325) > 1 && CanKill(i, R)) ??
-                             obj.Find(i => i.CountEnemiesInRange(325) >= GetValue<Slider>(mode, "RCountA").Value) ??
                              obj.Find(
                                  i =>
                                      i.CountEnemiesInRange(325) > 1 &&
@@ -267,7 +266,8 @@ namespace BrianSharp.Plugin
                                              a =>
                                                  a.IsValidTarget() &&
                                                  a.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value)
-                                         .Count > 0);
+                                         .Count > 0) ??
+                             obj.Find(i => i.CountEnemiesInRange(325) >= GetValue<Slider>(mode, "RCountA").Value);
                 if (target != null && R.CastOnUnit(target, PacketCast))
                 {
                     return;

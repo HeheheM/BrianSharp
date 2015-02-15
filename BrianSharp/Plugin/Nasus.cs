@@ -142,7 +142,7 @@ namespace BrianSharp.Plugin
 
         private void AfterAttack(AttackableUnit target)
         {
-            if (!Q.IsReady())
+            if (!target.IsValidTarget() || !Q.IsReady())
             {
                 return;
             }

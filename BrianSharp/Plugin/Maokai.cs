@@ -217,9 +217,9 @@ namespace BrianSharp.Plugin
                     var rCount = GetValue<Slider>(mode, "RCountA").Value;
                     if (Player.ManaPercentage() >= GetValue<Slider>(mode, "RMpU").Value &&
                         ((rCount > 1 &&
-                          (target.Count >= rCount ||
-                           (target.Count > 1 &&
+                          ((target.Count > 1 &&
                             target.Count(i => i.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value) > 0) ||
+                           target.Count >= rCount ||
                            (Player.CountEnemiesInRange(R.Range + 100) == 1 && R.GetTarget() != null &&
                             R.GetTarget().HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value))) ||
                          (rCount == 1 && R.GetTarget() != null &&

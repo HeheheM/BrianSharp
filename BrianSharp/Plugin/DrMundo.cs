@@ -122,7 +122,7 @@ namespace BrianSharp.Plugin
 
         private void OnAttack(AttackableUnit target)
         {
-            if (!E.IsReady())
+            if (!target.IsValidTarget() || !E.IsReady())
             {
                 return;
             }
