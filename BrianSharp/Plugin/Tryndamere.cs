@@ -73,7 +73,6 @@ namespace BrianSharp.Plugin
             }
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
-            Spellbook.OnCastSpell += OnCastSpell;
         }
 
         private void OnGameUpdate(EventArgs args)
@@ -121,21 +120,9 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
-        {
-            if (!sender.Owner.IsMe)
-            {
-                return;
-            }
-            if (args.Slot == SpellSlot.W && Player.IsDashing())
-            {
-                args.Process = false;
-            }
-        }
-
         private void Fight(string mode)
         {
-            if (mode == "Combo" && GetValue<bool>(mode, "W") && W.IsReady())
+            if (mode == "Combo" && GetValue<bool>(mode, "W") && W.IsReady() && !Player.IsDashing())
             {
                 var target = W.GetTarget();
                 if (target != null)

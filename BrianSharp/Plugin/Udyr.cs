@@ -60,7 +60,7 @@ namespace BrianSharp.Plugin
                 MainMenu.AddSubMenu(champMenu);
             }
             Game.OnGameUpdate += OnGameUpdate;
-            Spellbook.OnCastSpell += OnCastSpell;
+            Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             Orbwalk.AfterAttack += AfterAttack;
         }
 
@@ -114,14 +114,14 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
+        private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (!sender.Owner.IsMe)
+            if (!sender.IsMe)
             {
                 return;
             }
-            if (args.Slot == SpellSlot.Q || args.Slot == SpellSlot.W || args.Slot == SpellSlot.E ||
-                args.Slot == SpellSlot.R)
+            if (args.SData.Name == "UdyrTigerStance" || args.SData.Name == "UdyrTurtleStance" ||
+                args.SData.Name == "UdyrBearStance" || args.SData.Name == "UdyrPhoenixStance")
             {
                 _aaCount = 0;
             }

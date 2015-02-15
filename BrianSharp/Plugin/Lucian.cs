@@ -101,7 +101,6 @@ namespace BrianSharp.Plugin
             Game.OnGameUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
-            Spellbook.OnCastSpell += OnCastSpell;
             Orbwalk.AfterAttack += AfterAttack;
         }
 
@@ -206,18 +205,6 @@ namespace BrianSharp.Plugin
                      (Player.ServerPosition.To2D() + R.Range * Player.Direction.To2D().Perpendicular()).To3D())
                         .Normalized();
                 Utility.DelayAction.Add(3000, () => _rEndPos = new Vector3());
-            }
-        }
-
-        private void OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
-        {
-            if (!sender.Owner.IsMe)
-            {
-                return;
-            }
-            if (args.Slot == SpellSlot.W && Player.IsDashing())
-            {
-                args.Process = false;
             }
         }
 
