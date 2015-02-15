@@ -173,7 +173,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
                 var pos = E.GetLineFarmLocation(minionObj);
-                if (pos.MinionsHit > 0 && pos.Position.IsValid() &&
+                if (pos.MinionsHit > 0 &&
                     E.Cast(pos.Position.Extend(Player.ServerPosition.To2D(), -E.Width / 2), PacketCast))
                 {
                     return;

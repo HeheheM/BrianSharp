@@ -17,14 +17,14 @@ namespace BrianSharp.Plugin
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 480);
-            Q2 = new Spell(SpellSlot.Q, 1050);
+            Q = new Spell(SpellSlot.Q, 475);
+            Q2 = new Spell(SpellSlot.Q, 1000);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475);
             R = new Spell(SpellSlot.R, 1200);
-            Q.SetSkillshot(0.2f, 20, 2000, false, SkillshotType.SkillshotLine);
-            Q2.SetSkillshot(0.5f, 90, 1500, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0.1f, 375, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            Q.SetSkillshot(GetQDelay * 0.3f, 50, float.MaxValue, false, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(GetQDelay, 90, 1200, false, SkillshotType.SkillshotLine);
+            E.SetSkillshot(0.1f, 315, float.MaxValue, false, SkillshotType.SkillshotCircle);
             R.SetSkillshot(0.5f, 400, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", PlayerName + "_Plugin");
@@ -126,11 +126,24 @@ namespace BrianSharp.Plugin
             get { return Player.HasBuff("YasuoQ3W"); }
         }
 
+        private float GetQDelay
+        {
+            get { return 1 / (1 / 0.5f * Player.AttackSpeedMod); }
+        }
+
         private void OnGameUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
                 return;
+            }
+            if (!Equals(Q.Delay, GetQDelay * 0.3f))
+            {
+                Q.SetSkillshot(GetQDelay * 0.3f, 50, float.MaxValue, false, SkillshotType.SkillshotLine);
+            }
+            if (!Equals(Q2.Delay, GetQDelay))
+            {
+                Q2.SetSkillshot(GetQDelay, 90, 1500, false, SkillshotType.SkillshotLine);
             }
             switch (Orbwalk.CurrentMode)
             {
@@ -200,12 +213,12 @@ namespace BrianSharp.Plugin
                 }
                 else
                 {
-                    Q2.CastIfHitchanceEquals(unit, HitChance.VeryHigh, PacketCast);
+                    Q2.CastIfHitchanceEquals(unit, HitChance.High, PacketCast);
                 }
             }
             else
             {
-                Q2.CastIfHitchanceEquals(unit, HitChance.VeryHigh, PacketCast);
+                Q2.CastIfHitchanceEquals(unit, HitChance.High, PacketCast);
             }
         }
 
@@ -257,7 +270,7 @@ namespace BrianSharp.Plugin
                 if (mode == "Combo" && GetValue<bool>(mode, "EGap"))
                 {
                     var target = R.GetTarget();
-                    if (target != null && !Orbwalk.InAutoAttackRange(target, 100))
+                    if (target != null && !Orbwalk.InAutoAttackRange(target, 300))
                     {
                         var obj = GetNearObj(target.ServerPosition);
                         if (obj != null && E.CastOnUnit(obj, PacketCast))
@@ -309,7 +322,7 @@ namespace BrianSharp.Plugin
                     {
                         var target = (HaveQ3 ? Q2 : Q).GetTarget();
                         if (target != null &&
-                            (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(target, HitChance.VeryHigh, PacketCast))
+                            (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(target, HitChance.High, PacketCast))
                         {
                             return;
                         }
@@ -325,7 +338,7 @@ namespace BrianSharp.Plugin
                             .Find(i => CanKill(i, Q));
                     if (obj != null)
                     {
-                        Q.CastIfHitchanceEquals(obj, HitChance.VeryHigh, PacketCast);
+                        Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
                     }
                 }
             }
@@ -376,11 +389,26 @@ namespace BrianSharp.Plugin
                         (HaveQ3 ? Q2 : Q).Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
                     if (minionObj.Count > 0)
                     {
-                        var pos = (HaveQ3 ? Q2 : Q).GetLineFarmLocation(minionObj);
-                        if (pos.MinionsHit > 0 && pos.Position.IsValid() &&
-                            (HaveQ3 ? Q2 : Q).Cast(pos.Position, PacketCast))
+                        if (HaveQ3)
                         {
-                            return;
+                            var pos = Q2.GetLineFarmLocation(minionObj);
+                            if (pos.MinionsHit > 0 && Q2.Cast(pos.Position, PacketCast))
+                            {
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            var pos =
+                                Player.ServerPosition.To2D()
+                                    .Closest(
+                                        MinionManager.GetMinionsPredictedPositions(
+                                            minionObj, Q.Delay, Q.Width, Q.Speed, Player.ServerPosition, Q.Range, false,
+                                            SkillshotType.SkillshotLine));
+                            if (Q.IsInRange(pos) && Q.Cast(pos, PacketCast))
+                            {
+                                return;
+                            }
                         }
                     }
                 }
@@ -424,7 +452,7 @@ namespace BrianSharp.Plugin
                             (HaveQ3 ? Q2 : Q).Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                             .Cast<Obj_AI_Minion>()
                             .Find(i => CanKill(i, HaveQ3 ? Q2 : Q));
-                    if (obj != null && (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(obj, HitChance.VeryHigh, PacketCast))
+                    if (obj != null && (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(obj, HitChance.High, PacketCast))
                     {
                         return;
                     }
@@ -483,7 +511,7 @@ namespace BrianSharp.Plugin
                 var target = (HaveQ3 ? Q2 : Q).GetTarget();
                 if (target != null)
                 {
-                    (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(target, HitChance.VeryHigh, PacketCast);
+                    (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(target, HitChance.High, PacketCast);
                 }
             }
         }
@@ -512,7 +540,7 @@ namespace BrianSharp.Plugin
                 {
                     var target = (HaveQ3 ? Q2 : Q).GetTarget();
                     if (target != null && CanKill(target, HaveQ3 ? Q2 : Q) &&
-                        (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(target, HitChance.VeryHigh, PacketCast))
+                        (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(target, HitChance.High, PacketCast))
                     {
                         return;
                     }
@@ -582,10 +610,6 @@ namespace BrianSharp.Plugin
 
         private List<Obj_AI_Base> GetQCirObj(bool onlyHero = false)
         {
-            if (Player.Distance(_eEndPos) > 50)
-            {
-                return new List<Obj_AI_Base>();
-            }
             var heroObj =
                 HeroManager.Enemies.FindAll(i => i.IsValidTarget(E.Width, true, _eEndPos)).Cast<Obj_AI_Base>().ToList();
             if (onlyHero)

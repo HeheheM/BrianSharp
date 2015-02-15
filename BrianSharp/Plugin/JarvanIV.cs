@@ -298,7 +298,7 @@ namespace BrianSharp.Plugin
                 (minionObj.Count > 1 || minionObj.Any(i => i.MaxHealth >= 1200)))
             {
                 var pos = E.GetCircularFarmLocation(minionObj.FindAll(i => E.IsInRange(i)));
-                if (pos.MinionsHit > 0 && pos.Position.IsValid() && E.Cast(pos.Position, PacketCast))
+                if (pos.MinionsHit > 0 && E.Cast(pos.Position, PacketCast))
                 {
                     if (GetValue<bool>("Clear", "Q") && Q.IsReady())
                     {
@@ -317,7 +317,7 @@ namespace BrianSharp.Plugin
                     return;
                 }
                 var pos = Q.GetLineFarmLocation(minionObj);
-                if (pos.MinionsHit > 0 && pos.Position.IsValid() && Q.Cast(pos.Position, PacketCast))
+                if (pos.MinionsHit > 0 && Q.Cast(pos.Position, PacketCast))
                 {
                     return;
                 }

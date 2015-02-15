@@ -237,10 +237,7 @@ namespace BrianSharp.Plugin
                 var pos = E.GetCircularFarmLocation(minionObj);
                 if (pos.MinionsHit > 1)
                 {
-                    if (pos.Position.IsValid())
-                    {
-                        E.Cast(pos.Position, PacketCast);
-                    }
+                    E.Cast(pos.Position, PacketCast);
                 }
                 else
                 {
