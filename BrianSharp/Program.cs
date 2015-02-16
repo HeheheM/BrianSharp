@@ -34,6 +34,14 @@ namespace BrianSharp
             Player = ObjectManager.Player;
             PlayerName = Player.ChampionName;
             Game.PrintChat("<font color = \'{0}'>Brian Sharp</font>", HtmlColor.Lime);
+            var plugin = Type.GetType("BrianSharp.Plugin." + PlayerName);
+            if (plugin == null)
+            {
+                Game.PrintChat(
+                    "<font color = \'{0}'>-></font> <font color = \'{1}'>{2}</font>: <font color = \'{3}'>Currently not supported !</font>",
+                    HtmlColor.BlueViolet, HtmlColor.Gold, PlayerName, HtmlColor.Cyan);
+                return;
+            }
             MainMenu = new Menu("Brian Sharp", "BrianSharp", true);
             var infoMenu = new Menu("Info", "Info");
             {
@@ -43,42 +51,30 @@ namespace BrianSharp
             }
             TargetSelector.AddToMenu(MainMenu.AddSubMenu(new Menu("Target Selector", "TS")));
             Orbwalk.AddToMainMenu(MainMenu);
-            try
+            Activator.CreateInstance(plugin);
+            Helper.AddItem(MainMenu.SubMenu(PlayerName + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
+            Tiamat = ItemData.Tiamat_Melee_Only.GetItem();
+            Hydra = ItemData.Ravenous_Hydra_Melee_Only.GetItem();
+            Youmuu = ItemData.Youmuus_Ghostblade.GetItem();
+            Zhonya = ItemData.Zhonyas_Hourglass.GetItem();
+            Seraph = ItemData.Seraphs_Embrace.GetItem();
+            Sheen = ItemData.Sheen.GetItem();
+            Iceborn = ItemData.Iceborn_Gauntlet.GetItem();
+            Trinity = ItemData.Trinity_Force.GetItem();
+            Flash = Player.GetSpellSlot("summonerflash");
+            foreach (var spell in
+                Player.Spellbook.Spells.FindAll(
+                    i =>
+                        i.Name.ToLower().Contains("smite") &&
+                        (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2)))
             {
-                if (Activator.CreateInstance(null, "BrianSharp.Plugin." + PlayerName) != null)
-                {
-                    Tiamat = ItemData.Tiamat_Melee_Only.GetItem();
-                    Hydra = ItemData.Ravenous_Hydra_Melee_Only.GetItem();
-                    Youmuu = ItemData.Youmuus_Ghostblade.GetItem();
-                    Zhonya = ItemData.Zhonyas_Hourglass.GetItem();
-                    Seraph = ItemData.Seraphs_Embrace.GetItem();
-                    Sheen = ItemData.Sheen.GetItem();
-                    Iceborn = ItemData.Iceborn_Gauntlet.GetItem();
-                    Trinity = ItemData.Trinity_Force.GetItem();
-                    Helper.AddItem(
-                        MainMenu.SubMenu(PlayerName + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
-                    Flash = Player.GetSpellSlot("summonerflash");
-                    foreach (var spell in
-                        Player.Spellbook.Spells.FindAll(
-                            i =>
-                                i.Name.ToLower().Contains("smite") &&
-                                (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2)))
-                    {
-                        Smite = spell.Slot;
-                    }
-                    Ignite = Player.GetSpellSlot("summonerdot");
-                    Game.PrintChat(
-                        "<font color = \'{0}'>-></font> <font color = \'{1}'>Plugin {2}</font>: <font color = \'{3}'>Loaded !</font>",
-                        HtmlColor.BlueViolet, HtmlColor.Gold, PlayerName, HtmlColor.Cyan);
-                }
+                Smite = spell.Slot;
             }
-            catch (Exception)
-            {
-                Game.PrintChat(
-                    "<font color = \'{0}'>-></font> <font color = \'{1}'>{2}</font>: <font color = \'{3}'>Currently not supported !</font>",
-                    HtmlColor.BlueViolet, HtmlColor.Gold, PlayerName, HtmlColor.Cyan);
-            }
+            Ignite = Player.GetSpellSlot("summonerdot");
             MainMenu.AddToMainMenu();
+            Game.PrintChat(
+                "<font color = \'{0}'>-></font> <font color = \'{1}'>Plugin {2}</font>: <font color = \'{3}'>Loaded !</font>",
+                HtmlColor.BlueViolet, HtmlColor.Gold, PlayerName, HtmlColor.Cyan);
         }
     }
 

@@ -153,11 +153,15 @@ namespace BrianSharp.Plugin
                 var target = R.GetTarget(0, HeroManager.Enemies.FindAll(i => !GetValue<bool>("Lock", i.ChampionName)));
                 if (target != null)
                 {
-                    if (GetValue<bool>(mode, "RSmite") && CurrentSmiteType == SmiteType.Red)
+                    if (GetValue<bool>(mode, "RSmite") && CurrentSmiteType == SmiteType.Red && CastSmite(target, false))
                     {
-                        CastSmite(target, false);
+                        return;
                     }
-                    R.CastOnUnit(target, PacketCast);
+                    if ((!GetValue<bool>(mode, "RSmite") || CurrentSmiteType != SmiteType.Red) &&
+                        R.CastOnUnit(target, PacketCast))
+                    {
+                        return;
+                    }
                 }
             }
             if (GetValue<bool>(mode, "W") && W.IsReady() &&
@@ -177,15 +181,12 @@ namespace BrianSharp.Plugin
             }
             var minionObj = MinionManager.GetMinions(
                 Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-            if (minionObj.Count == 0)
+            var obj = minionObj.Cast<Obj_AI_Minion>().Find(i => CanKill(i, Q)) ?? minionObj.MinOrDefault(i => i.Health);
+            if (obj == null)
             {
                 return;
             }
-            var obj = minionObj.Cast<Obj_AI_Minion>().Find(i => CanKill(i, Q)) ?? minionObj.MinOrDefault(i => i.Health);
-            if (obj != null)
-            {
-                Q.CastOnUnit(obj, PacketCast);
-            }
+            Q.CastOnUnit(obj, PacketCast);
         }
 
         private void LastHit()
@@ -260,8 +261,8 @@ namespace BrianSharp.Plugin
             }
             var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range))
                 .MinOrDefault(i => i.Distance(Player));
-            var tower = ObjectManager.Get<Obj_AI_Turret>().Find(i => i.IsAlly && !i.IsDead && i.Distance(Player) <= 950);
-            if (target != null && tower != null && target.Distance(tower) <= 950)
+            var tower = ObjectManager.Get<Obj_AI_Turret>().Find(i => i.IsAlly && !i.IsDead && i.Distance(Player) <= 850);
+            if (target != null && tower != null && target.Distance(tower) <= 850)
             {
                 R.CastOnUnit(target, PacketCast);
             }

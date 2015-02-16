@@ -151,8 +151,8 @@ namespace BrianSharp.Plugin
                 if (mode == "Combo" && state == Spell.CastStates.Collision && GetValue<bool>(mode, "QCol"))
                 {
                     var pred = Q.GetPrediction(Q.GetTarget());
-                    if (pred.CollisionObjects.FindAll(i => i.IsMinion).Count == 1 &&
-                        CastSmite(pred.CollisionObjects.First()) && Q.Cast(pred.CastPosition, PacketCast))
+                    if (pred.CollisionObjects.Count(i => i.IsMinion) == 1 && CastSmite(pred.CollisionObjects.First()) &&
+                        Q.Cast(pred.CastPosition, PacketCast))
                     {
                         return;
                     }

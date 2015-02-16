@@ -366,8 +366,8 @@ namespace BrianSharp.Plugin
             }
             var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(E.Range))
                 .MinOrDefault(i => i.Distance(Player));
-            var tower = ObjectManager.Get<Obj_AI_Turret>().Find(i => i.IsAlly && !i.IsDead && i.Distance(Player) <= 950);
-            if (target != null && tower != null && target.Distance(tower) <= 950)
+            var tower = ObjectManager.Get<Obj_AI_Turret>().Find(i => i.IsAlly && !i.IsDead && i.Distance(Player) <= 850);
+            if (target != null && tower != null && target.Distance(tower) <= 850)
             {
                 E.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
             }

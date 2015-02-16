@@ -277,7 +277,7 @@ namespace BrianSharp.Common
             }
             if (args.Target is Obj_AI_Base || args.Target is Obj_BarracksDampener || args.Target is Obj_HQ)
             {
-                _lastAttack = Environment.TickCount - Game.Ping / 2;
+                _lastAttack = Utils.TickCount - Game.Ping / 2;
                 var target = args.Target as Obj_AI_Base;
                 if (target != null)
                 {
@@ -308,7 +308,7 @@ namespace BrianSharp.Common
                 return;
             }
             FireAfterAttack(_lastTarget);
-            _lastRealAttack = Environment.TickCount;
+            _lastRealAttack = Utils.TickCount;
         }
 
         private static void OnStopCast(Spellbook sender, SpellbookStopCastEventArgs args)
@@ -325,11 +325,11 @@ namespace BrianSharp.Common
 
         private static void MoveTo(Vector3 pos)
         {
-            if (Environment.TickCount - _lastMove < _config.Item("OW_Misc_MoveDelay").GetValue<Slider>().Value)
+            if (Utils.TickCount - _lastMove < _config.Item("OW_Misc_MoveDelay").GetValue<Slider>().Value)
             {
                 return;
             }
-            _lastMove = Environment.TickCount;
+            _lastMove = Utils.TickCount;
             if (Player.Distance(pos) < _config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value)
             {
                 if (Player.Path.Count() > 1)
@@ -357,7 +357,7 @@ namespace BrianSharp.Common
                         Player.IssueOrder(GameObjectOrder.AttackUnit, target);
                         if (_lastTarget != null && _lastTarget.IsValid && _lastTarget != target)
                         {
-                            _lastAttack = Environment.TickCount + Game.Ping / 2;
+                            _lastAttack = Utils.TickCount + Game.Ping / 2;
                         }
                         _lastTarget = target;
                         return;
@@ -494,29 +494,19 @@ namespace BrianSharp.Common
 
         private static bool CanAttack()
         {
-            if (_lastAttack <= Environment.TickCount)
-            {
-                return _lastAttack + Player.AttackDelay * 1000 <= Environment.TickCount + Game.Ping / 2 + 25;
-            }
-            return false;
+            return _lastAttack <= Utils.TickCount &&
+                   _lastAttack + Player.AttackDelay * 1000 <= Utils.TickCount + Game.Ping / 2 + 25;
         }
 
         private static bool HaveCancled()
         {
-            if (_lastAttack - Environment.TickCount > Player.AttackCastDelay * 1000 + 25)
-            {
-                return _lastRealAttack < _lastAttack;
-            }
-            return false;
+            return _lastAttack - Utils.TickCount > Player.AttackCastDelay * 1000 + 25 && _lastRealAttack < _lastAttack;
         }
 
         private static bool CanMove()
         {
-            if (_lastAttack <= Environment.TickCount)
-            {
-                return _lastAttack + Player.AttackCastDelay * 1000 + _windUp <= Environment.TickCount + Game.Ping / 2;
-            }
-            return false;
+            return _lastAttack <= Utils.TickCount &&
+                   _lastAttack + Player.AttackCastDelay * 1000 + _windUp <= Utils.TickCount + Game.Ping / 2;
         }
 
         private static bool ShouldWait()
