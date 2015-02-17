@@ -144,7 +144,7 @@ namespace BrianSharp.Common
                         new MenuItem("OW_Misc_MoveDelay", "Movement Delay").SetValue(new Slider(80, 0, 250)));
                     miscMenu.AddItem(
                         new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(80, 0, 200)));
-                    miscMenu.AddItem(new MenuItem("OW_Misc_AutoWindUp", "-> Auto WindUp").SetValue(true));
+                    miscMenu.AddItem(new MenuItem("OW_Misc_AutoWindUp", "-> Auto WindUp").SetValue(false));
                     miscMenu.AddItem(
                         new MenuItem("OW_Misc_PriorityUnit", "Priority Unit").SetValue(
                             new StringList(new[] { "Minion", "Hero" })));
@@ -495,7 +495,7 @@ namespace BrianSharp.Common
         private static bool CanAttack()
         {
             return _lastAttack <= Utils.TickCount &&
-                   _lastAttack + Player.AttackDelay * 1000 <= Utils.TickCount + Game.Ping / 2 + 25;
+                   Utils.TickCount + Game.Ping / 2 + 25 >= _lastAttack + Player.AttackDelay * 1000;
         }
 
         private static bool HaveCancled()
@@ -506,7 +506,7 @@ namespace BrianSharp.Common
         private static bool CanMove()
         {
             return _lastAttack <= Utils.TickCount &&
-                   _lastAttack + Player.AttackCastDelay * 1000 + _windUp <= Utils.TickCount + Game.Ping / 2;
+                   Utils.TickCount + Game.Ping / 2 >= _lastAttack + Player.AttackCastDelay * 1000 + _windUp;
         }
 
         private static bool ShouldWait()
