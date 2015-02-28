@@ -210,7 +210,7 @@ namespace BrianSharp.Plugin
 
         private void AfterAttack(AttackableUnit target)
         {
-            if (!target.IsValidTarget() || !E.IsReady())
+            if (!E.IsReady())
             {
                 return;
             }
@@ -355,7 +355,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady() && !Player.IsDashing())
             {
-                var pos = W.GetCircularFarmLocation(minionObj.FindAll(i => W.IsInRange(i)));
+                var pos = W.GetCircularFarmLocation(minionObj.Where(i => W.IsInRange(i)).ToList());
                 if (pos.MinionsHit > 1)
                 {
                     if (W.Cast(pos.Position, PacketCast))
@@ -482,7 +482,7 @@ namespace BrianSharp.Plugin
                         i =>
                             Q2.WillHit(
                                 target, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range),
-                                (int) (target.BoundingRadius / 4)));
+                                (int) (target.BoundingRadius / 2)));
             return obj != null && (!cancelR || R.Cast(PacketCast)) && Q.CastOnUnit(obj, PacketCast);
         }
 

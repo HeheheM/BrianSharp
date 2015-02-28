@@ -69,7 +69,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(antiGapMenu, "E", "Use E");
                         foreach (var spell in
-                            AntiGapcloser.Spells.FindAll(
+                            AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -82,7 +82,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(interruptMenu, "E", "Use E");
                         foreach (var spell in
-                            Interrupter.Spells.FindAll(
+                            Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -95,7 +95,7 @@ namespace BrianSharp.Plugin
                     {
                         var saveMenu = new Menu("Ally", "Ally");
                         {
-                            foreach (var obj in HeroManager.Allies.FindAll(i => !i.IsMe))
+                            foreach (var obj in HeroManager.Allies.Where(i => !i.IsMe))
                             {
                                 AddItem(saveMenu, obj.ChampionName, obj.ChampionName);
                             }
@@ -187,7 +187,11 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            E.CastIfHitchanceEquals(gapcloser.Sender, HitChance.High, PacketCast);
+            var predE = E.GetPrediction(gapcloser.Sender);
+            if (predE.Hitchance >= HitChance.High)
+            {
+                E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
+            }
         }
 
         private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
@@ -197,20 +201,32 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            E.CastIfHitchanceEquals(unit, HitChance.High, PacketCast);
+            var predE = E.GetPrediction(unit);
+            if (predE.Hitchance >= HitChance.High)
+            {
+                E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
+            }
         }
 
         private void Fight(string mode)
         {
             if (GetValue<bool>(mode, "E") &&
-                (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "EHpA").Value) &&
-                E.CastOnBestTarget(0, PacketCast).IsCasted())
+                (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "EHpA").Value))
             {
-                if (mode == "Combo" && GetValue<bool>(mode, "W") && W.IsReady())
+                var target = E.GetTarget();
+                if (target != null)
                 {
-                    W.Cast(PacketCast);
+                    var predE = E.GetPrediction(target);
+                    if (predE.Hitchance >= HitChance.High &&
+                        E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast))
+                    {
+                        if (mode == "Combo" && GetValue<bool>(mode, "W") && W.IsReady())
+                        {
+                            W.Cast(PacketCast);
+                        }
+                        return;
+                    }
                 }
-                return;
             }
             if (GetValue<bool>(mode, "Q") && Q.CastOnBestTarget(0, PacketCast).IsCasted())
             {
@@ -316,7 +332,11 @@ namespace BrianSharp.Plugin
                 Utility.DelayAction.Add(300, () => _eCasted = true);
                 return;
             }
-            E.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
+            var predE = E.GetPrediction(target);
+            if (predE.Hitchance >= HitChance.High)
+            {
+                E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
+            }
         }
 
         private void UltimateAlert()
@@ -329,7 +349,7 @@ namespace BrianSharp.Plugin
             if (!_alertCasted)
             {
                 var obj =
-                    HeroManager.Allies.FindAll(
+                    HeroManager.Allies.Where(
                         i =>
                             !i.IsMe && i.IsValidTarget(R.Range, false) && GetValue<bool>("Ally", i.ChampionName) &&
                             i.HealthPercentage() < GetValue<Slider>("Ultimate", "AlertHpU").Value &&
@@ -337,9 +357,7 @@ namespace BrianSharp.Plugin
                         .MinOrDefault(i => i.Health);
                 if (obj != null)
                 {
-                    Game.PrintChat(
-                        "<font color = \'{0}'>-></font> <font color = \'{1}'>{2}</font>: <font color = \'{3}'>In Dangerous</font>",
-                        HtmlColor.BlueViolet, HtmlColor.Gold, obj.ChampionName, HtmlColor.Cyan);
+                    AddNotif(obj.ChampionName + ": In Dangerous", 4900);
                     _alertAlly = obj;
                     _alertCasted = true;
                     Utility.DelayAction.Add(
@@ -364,12 +382,15 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(E.Range))
-                .MinOrDefault(i => i.Distance(Player));
+            var target = HeroManager.Enemies.Where(i => i.IsValidTarget(E.Range)).MinOrDefault(i => i.Distance(Player));
             var tower = ObjectManager.Get<Obj_AI_Turret>().Find(i => i.IsAlly && !i.IsDead && i.Distance(Player) <= 850);
             if (target != null && tower != null && target.Distance(tower) <= 850)
             {
-                E.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
+                var predE = E.GetPrediction(target);
+                if (predE.Hitchance >= HitChance.High)
+                {
+                    E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
+                }
             }
         }
     }

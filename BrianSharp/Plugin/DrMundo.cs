@@ -64,6 +64,7 @@ namespace BrianSharp.Plugin
                         AddItem(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
+                    AddItem(miscMenu, "WExtraRange", "W Extra Range Before Cancel", 60, 0, 200);
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
@@ -136,11 +137,6 @@ namespace BrianSharp.Plugin
 
         private void Fight(string mode)
         {
-            if (GetValue<bool>(mode, "W") && W.IsReady() && Player.HasBuff("BurningAgony") && W.GetTarget(175) == null &&
-                W.Cast(PacketCast))
-            {
-                return;
-            }
             if (GetValue<bool>(mode, "Q") && Q.IsReady())
             {
                 var state = Q.CastOnBestTarget(0, PacketCast);
@@ -162,7 +158,7 @@ namespace BrianSharp.Plugin
             {
                 if (Player.HealthPercentage() >= GetValue<Slider>(mode, "WHpA").Value)
                 {
-                    if (W.GetTarget(60) != null)
+                    if (W.GetTarget(GetValue<Slider>("Misc", "WExtraRange").Value) != null)
                     {
                         if (!Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
                         {
@@ -204,8 +200,12 @@ namespace BrianSharp.Plugin
             {
                 if (Player.HealthPercentage() >= GetValue<Slider>("Clear", "WHpA").Value)
                 {
-                    if (minionObj.Count(i => W.IsInRange(i, W.Range + 60)) > 1 ||
-                        minionObj.Count(i => i.MaxHealth >= 1200 && W.IsInRange(i, W.Range + 60)) > 0)
+                    if (minionObj.Count(i => W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)) >
+                        1 ||
+                        minionObj.Count(
+                            i =>
+                                i.MaxHealth >= 1200 &&
+                                W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)) > 0)
                     {
                         if (!Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
                         {

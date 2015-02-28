@@ -64,7 +64,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(antiGapMenu, "Q", "Use Q");
                         foreach (var spell in
-                            AntiGapcloser.Spells.FindAll(
+                            AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -77,7 +77,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(interruptMenu, "Q", "Use Q");
                         foreach (var spell in
-                            Interrupter.Spells.FindAll(
+                            Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -86,6 +86,7 @@ namespace BrianSharp.Plugin
                         }
                         miscMenu.AddSubMenu(interruptMenu);
                     }
+                    AddItem(miscMenu, "WExtraRange", "W Extra Range Before Cancel", 60, 0, 200);
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
@@ -171,16 +172,11 @@ namespace BrianSharp.Plugin
 
         private void Fight(string mode)
         {
-            if (GetValue<bool>(mode, "W") && W.IsReady() && Player.HasBuff("AuraofDespair") && W.GetTarget(200) == null &&
-                W.Cast(PacketCast))
-            {
-                return;
-            }
             if (mode == "Combo")
             {
                 if (GetValue<bool>(mode, "R") && R.IsReady())
                 {
-                    var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range));
+                    var target = HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range)).ToList();
                     if (((target.Count > 1 && target.Count(i => CanKill(i, R)) > 0) ||
                          (target.Count > 1 &&
                           target.Count(i => i.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value) > 0) ||
@@ -196,14 +192,14 @@ namespace BrianSharp.Plugin
                         if (
                             (from obj in
                                 ObjectManager.Get<Obj_AI_Base>()
-                                    .FindAll(
+                                    .Where(
                                         i =>
                                             !(i is Obj_AI_Turret) && i.IsValidTarget(Q.Range) &&
                                             Q.GetPrediction(i).Hitchance >= HitChance.High)
                                     .OrderByDescending(i => i.CountEnemiesInRange(R.Range))
                                 let sub =
-                                    HeroManager.Enemies.FindAll(
-                                        i => i.IsValidTarget(R.Range - 20, true, obj.ServerPosition))
+                                    HeroManager.Enemies.Where(
+                                        i => i.IsValidTarget(R.Range - 20, true, obj.ServerPosition)).ToList()
                                 where
                                     sub.Count > 0 &&
                                     ((sub.Count > 1 && sub.Count(i => CanKill(i, R)) > 0) ||
@@ -244,7 +240,7 @@ namespace BrianSharp.Plugin
             {
                 if (Player.ManaPercentage() >= GetValue<Slider>(mode, "WMpA").Value)
                 {
-                    if (W.GetTarget(60) != null)
+                    if (W.GetTarget(GetValue<Slider>("Misc", "WExtraRange").Value) != null)
                     {
                         if (!Player.HasBuff("AuraofDespair"))
                         {
@@ -285,8 +281,12 @@ namespace BrianSharp.Plugin
             {
                 if (Player.ManaPercentage() >= GetValue<Slider>("Clear", "WMpA").Value)
                 {
-                    if (minionObj.Count(i => W.IsInRange(i, W.Range + 60)) > 1 ||
-                        minionObj.Count(i => i.MaxHealth >= 1200 && W.IsInRange(i, W.Range + 60)) > 0)
+                    if (minionObj.Count(i => W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)) >
+                        1 ||
+                        minionObj.Count(
+                            i =>
+                                i.MaxHealth >= 1200 &&
+                                W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)) > 0)
                     {
                         if (!Player.HasBuff("AuraofDespair") && W.Cast(PacketCast))
                         {

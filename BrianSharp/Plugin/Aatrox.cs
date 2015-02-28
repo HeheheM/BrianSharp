@@ -76,7 +76,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(antiGapMenu, "Q", "Use Q");
                         foreach (var spell in
-                            AntiGapcloser.Spells.FindAll(
+                            AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -89,7 +89,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(interruptMenu, "Q", "Use Q");
                         foreach (var spell in
-                            Interrupter.Spells.FindAll(
+                            Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -195,7 +195,7 @@ namespace BrianSharp.Plugin
         {
             if (GetValue<bool>(mode, "Q") &&
                 (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value) &&
-                Q2.CastOnBestTarget(0, PacketCast, true).IsCasted())
+                Q2.CastOnBestTarget(Q2.Width, PacketCast, true).IsCasted())
             {
                 return;
             }
@@ -223,7 +223,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "R") && R.IsReady())
             {
-                var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range));
+                var target = HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range)).ToList();
                 if ((target.Count > 1 && target.Count(i => CanKill(i, R)) > 0) ||
                     (target.Count > 1 &&
                      target.Count(i => i.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value) > 0) ||
@@ -245,7 +245,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var pos = Q.GetCircularFarmLocation(minionObj.FindAll(i => Q.IsInRange(i)));
+                var pos = Q.GetCircularFarmLocation(minionObj.Where(i => Q.IsInRange(i, Q.Range + Q2.Width)).ToList());
                 if (pos.MinionsHit > 1)
                 {
                     if (Q.Cast(pos.Position, PacketCast))
@@ -256,7 +256,7 @@ namespace BrianSharp.Plugin
                 else
                 {
                     var obj = minionObj.Find(i => i.MaxHealth >= 1200);
-                    if (obj != null && Q.IsInRange(obj) && Q.CastIfWillHit(obj, -1, PacketCast))
+                    if (obj != null && Q.IsInRange(obj, Q.Range + Q2.Width) && Q.CastIfWillHit(obj, -1, PacketCast))
                     {
                         return;
                     }
@@ -341,7 +341,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
-                var target = Q.GetTarget();
+                var target = Q.GetTarget(Q2.Width);
                 if (target != null && CanKill(target, Q) && Q.CastIfWillHit(target, -1, PacketCast))
                 {
                     return;

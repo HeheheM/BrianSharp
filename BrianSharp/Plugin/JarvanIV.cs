@@ -67,6 +67,7 @@ namespace BrianSharp.Plugin
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
                     AddItem(fleeMenu, "EQ", "Use EQ");
+                    AddItem(fleeMenu, "EQMaxRange", "-> At Max Range");
                     AddItem(fleeMenu, "W", "Use W To Slow Enemy");
                     champMenu.AddSubMenu(fleeMenu);
                 }
@@ -84,7 +85,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(interruptMenu, "EQ", "Use EQ");
                         foreach (var spell in
-                            Interrupter.Spells.FindAll(
+                            Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -182,11 +183,15 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (E.CanCast(unit) && Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost &&
-                E.Cast(unit.ServerPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast) &&
-                Q.Cast(unit.ServerPosition, PacketCast))
+            if (E.CanCast(unit) && Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost)
             {
-                return;
+                var predE = E.GetPrediction(unit, true);
+                if (predE.Hitchance >= HitChance.High &&
+                    E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast) &&
+                    Q.Cast(predE.CastPosition, PacketCast))
+                {
+                    return;
+                }
             }
             if (Flag != null &&
                 (unit.Distance(Flag) <= 60 ||
@@ -218,16 +223,20 @@ namespace BrianSharp.Plugin
                 {
                     return;
                 }
-                var target = E.GetTarget();
-                if (target != null &&
-                    E.Cast(target.ServerPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast))
+                var target = E.GetTarget(E.Width);
+                if (target != null)
                 {
-                    if (GetValue<bool>(mode, "Q") && Q.IsReady() &&
-                        (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value))
+                    var predE = E.GetPrediction(target, true);
+                    if (predE.Hitchance >= HitChance.High &&
+                        E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast))
                     {
-                        Q.Cast(target.ServerPosition, PacketCast);
+                        if (GetValue<bool>(mode, "Q") && Q.IsReady() &&
+                            (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value))
+                        {
+                            Q.Cast(predE.CastPosition, PacketCast);
+                        }
+                        return;
                     }
-                    return;
                 }
             }
             if ((!GetValue<bool>(mode, "E") || !E.IsReady()) && GetValue<bool>(mode, "Q") && Q.IsReady() &&
@@ -256,17 +265,14 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "R") && R.IsReady() && !_rCasted)
             {
-                var obj = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range));
+                var obj = HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range)).ToList();
                 var target = obj.Find(i => i.CountEnemiesInRange(325) > 1 && CanKill(i, R)) ??
                              obj.Find(
                                  i =>
                                      i.CountEnemiesInRange(325) > 1 &&
                                      i.GetEnemiesInRange(325)
-                                         .FindAll(
-                                             a =>
-                                                 a.IsValidTarget() &&
-                                                 a.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value)
-                                         .Count > 0) ??
+                                         .Where(a => a.IsValidTarget())
+                                         .Count(a => a.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value) > 0) ??
                              obj.Find(i => i.CountEnemiesInRange(325) >= GetValue<Slider>(mode, "RCountA").Value);
                 if (target != null && R.CastOnUnit(target, PacketCast))
                 {
@@ -297,7 +303,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("Clear", "E") && E.IsReady() &&
                 (minionObj.Count > 1 || minionObj.Any(i => i.MaxHealth >= 1200)))
             {
-                var pos = E.GetCircularFarmLocation(minionObj.FindAll(i => E.IsInRange(i)));
+                var pos = E.GetCircularFarmLocation(minionObj.Where(i => E.IsInRange(i, E.Range + E.Width)).ToList());
                 if (pos.MinionsHit > 0 && E.Cast(pos.Position, PacketCast))
                 {
                     if (GetValue<bool>("Clear", "Q") && Q.IsReady())
@@ -361,8 +367,10 @@ namespace BrianSharp.Plugin
         {
             if (GetValue<bool>("Flee", "EQ") && Q.IsReady() && E.IsReady() &&
                 Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost &&
-                E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast) &&
-                Q.Cast(Game.CursorPos, PacketCast))
+                E.Cast(
+                    GetValue<bool>("Flee", "EQMaxRange")
+                        ? Player.ServerPosition.Extend(Game.CursorPos, E.Range)
+                        : Game.CursorPos, PacketCast) && Q.Cast(Game.CursorPos, PacketCast))
             {
                 return;
             }

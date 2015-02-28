@@ -66,7 +66,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(antiGapMenu, "W", "Use W");
                         foreach (var spell in
-                            AntiGapcloser.Spells.FindAll(
+                            AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -79,7 +79,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(interruptMenu, "W", "Use W");
                         foreach (var spell in
-                            Interrupter.Spells.FindAll(
+                            Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -302,8 +302,8 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady())
             {
-                var obj = minionObj.FindAll(i => W.IsInRange(i)).Find(i => CanKill(i, W)) ??
-                          minionObj.FindAll(i => W.IsInRange(i)).MinOrDefault(i => i.Health);
+                var obj = minionObj.Where(i => W.IsInRange(i)).Find(i => CanKill(i, W)) ??
+                          minionObj.Where(i => W.IsInRange(i)).MinOrDefault(i => i.Health);
                 if (obj != null && W.CastOnUnit(obj, PacketCast))
                 {
                     return;
@@ -311,8 +311,8 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
-                var obj = minionObj.FindAll(i => E.IsInRange(i)).Find(i => CanKill(i, E)) ??
-                          minionObj.FindAll(i => E.IsInRange(i)).MinOrDefault(i => i.Health);
+                var obj = minionObj.Where(i => E.IsInRange(i)).Find(i => CanKill(i, E)) ??
+                          minionObj.Where(i => E.IsInRange(i)).MinOrDefault(i => i.Health);
                 if (obj != null)
                 {
                     E.CastOnUnit(obj, PacketCast);
@@ -389,8 +389,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(W.Range))
-                .MinOrDefault(i => i.Distance(Player));
+            var target = HeroManager.Enemies.Where(i => i.IsValidTarget(W.Range)).MinOrDefault(i => i.Distance(Player));
             var tower = ObjectManager.Get<Obj_AI_Turret>().Find(i => i.IsAlly && !i.IsDead && i.Distance(Player) <= 850);
             if (target != null && tower != null && target.Distance(tower) <= 850)
             {

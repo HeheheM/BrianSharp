@@ -59,7 +59,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(antiGapMenu, "Q", "Use Q");
                         foreach (var spell in
-                            AntiGapcloser.Spells.FindAll(
+                            AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -72,7 +72,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(interruptMenu, "E", "Use E");
                         foreach (var spell in
-                            Interrupter.Spells.FindAll(
+                            Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(

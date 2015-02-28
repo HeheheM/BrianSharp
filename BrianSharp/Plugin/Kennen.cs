@@ -46,6 +46,7 @@ namespace BrianSharp.Plugin
                 {
                     AddItem(clearMenu, "Q", "Use Q");
                     AddItem(clearMenu, "W", "Use W");
+                    AddItem(clearMenu, "WHitA", "-> If Hit Above", 2, 1, 5);
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
@@ -73,7 +74,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(interruptMenu, "W", "Use W");
                         foreach (var spell in
-                            Interrupter.Spells.FindAll(
+                            Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -177,7 +178,8 @@ namespace BrianSharp.Plugin
                 if (Player.HasBuff("KennenShurikenStorm"))
                 {
                     var target =
-                        HeroManager.Enemies.FindAll(i => i.IsValidTarget(W.Range) && i.HasBuff("KennenMarkOfStorm"));
+                        HeroManager.Enemies.Where(i => i.IsValidTarget(W.Range) && i.HasBuff("KennenMarkOfStorm"))
+                            .ToList();
                     if ((target.Count(i => CanKill(i, W, 1)) > 0 || target.Count(HaveWStun) > 1 || target.Count > 2 ||
                          (target.Count(HaveWStun) == 1 && target.Count(i => !HaveWStun(i)) > 0)) && W.Cast(PacketCast))
                     {
@@ -193,7 +195,7 @@ namespace BrianSharp.Plugin
             {
                 if (R.IsReady())
                 {
-                    var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range));
+                    var target = HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range)).ToList();
                     if ((target.Count > 1 && target.Count(i => CanKill(i, R, GetRDmg(i))) > 0) ||
                         (target.Count > 1 &&
                          target.Count(i => i.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value) > 0) ||
@@ -229,7 +231,8 @@ namespace BrianSharp.Plugin
                 }
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady() &&
-                minionObj.Count(i => W.IsInRange(i) && i.HasBuff("KennenMarkOfStorm")) > 1)
+                minionObj.Count(i => W.IsInRange(i) && i.HasBuff("KennenMarkOfStorm")) >=
+                GetValue<Slider>("Clear", "WHitA").Value)
             {
                 W.Cast(PacketCast);
             }

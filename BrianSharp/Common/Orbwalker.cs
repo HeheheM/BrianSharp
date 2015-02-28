@@ -37,7 +37,6 @@ namespace BrianSharp.Common
         private static bool _disableNextAttack;
         private static int _lastAttack;
         private static int _lastMove;
-        private static int _windUp;
         private static int _lastRealAttack;
         private static AttackableUnit _lastTarget;
         private static Spell _movePrediction;
@@ -144,7 +143,6 @@ namespace BrianSharp.Common
                         new MenuItem("OW_Misc_MoveDelay", "Movement Delay").SetValue(new Slider(80, 0, 250)));
                     miscMenu.AddItem(
                         new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(80, 0, 200)));
-                    miscMenu.AddItem(new MenuItem("OW_Misc_AutoWindUp", "-> Auto WindUp").SetValue(false));
                     miscMenu.AddItem(
                         new MenuItem("OW_Misc_PriorityUnit", "Priority Unit").SetValue(
                             new StringList(new[] { "Minion", "Hero" })));
@@ -188,13 +186,12 @@ namespace BrianSharp.Common
 
         private static void OnGameUpdate(EventArgs args)
         {
-            CheckAutoWindUp();
             if (Player.IsDead || CurrentMode == Mode.None || MenuGUI.IsChatOpen || Player.IsRecalling() ||
                 Player.IsCastingInterruptableSpell(true))
             {
                 return;
             }
-            Orbwalk(GetPossibleTarget());
+            Orbwalk(CurrentMode == Mode.Flee ? null : GetPossibleTarget());
         }
 
         private static void OnDraw(EventArgs args)
@@ -210,7 +207,7 @@ namespace BrianSharp.Common
             }
             if (_config.Item("OW_Draw_AARangeEnemy").IsActive())
             {
-                foreach (var obj in HeroManager.Enemies.FindAll(i => i.IsValidTarget(1000)))
+                foreach (var obj in HeroManager.Enemies.Where(i => i.IsValidTarget(1000)))
                 {
                     Render.Circle.DrawCircle(
                         obj.Position, GetAutoAttackRange(obj, Player),
@@ -414,37 +411,6 @@ namespace BrianSharp.Common
             return CurrentMode != Mode.LastHit || _config.Item("OW_LastHit_Move").IsActive();
         }
 
-        private static void CheckAutoWindUp()
-        {
-            if (!_config.Item("OW_Misc_AutoWindUp").IsActive())
-            {
-                _windUp = GetCurrentWindupTime;
-                return;
-            }
-            var sub = 0;
-            if (Game.Ping > 99)
-            {
-                sub = Game.Ping / 100 * 5;
-            }
-            else if (Game.Ping > 40 && Game.Ping < 100)
-            {
-                sub = Game.Ping / 100 * 10;
-            }
-            else if (Game.Ping < 41)
-            {
-                sub = 20;
-            }
-            var windUp = Game.Ping + sub;
-            if (windUp < 40)
-            {
-                windUp = 40;
-            }
-            _config.Item("OW_Misc_ExtraWindUp")
-                .SetValue(windUp < 200 ? new Slider(windUp, 0, 200) : new Slider(200, 0, 200));
-            _windUp = windUp;
-            _config.Item("OW_Misc_AutoWindUp").SetValue(false);
-        }
-
         public static float GetAutoAttackRange(AttackableUnit target = null)
         {
             return GetAutoAttackRange(Player, target);
@@ -506,7 +472,7 @@ namespace BrianSharp.Common
         private static bool CanMove()
         {
             return _lastAttack <= Utils.TickCount &&
-                   Utils.TickCount + Game.Ping / 2 >= _lastAttack + Player.AttackCastDelay * 1000 + _windUp;
+                   Utils.TickCount + Game.Ping / 2 >= _lastAttack + Player.AttackCastDelay * 1000 + GetCurrentWindupTime;
         }
 
         private static bool ShouldWait()
@@ -537,7 +503,7 @@ namespace BrianSharp.Common
             {
                 foreach (var obj in
                     ObjectManager.Get<Obj_AI_Minion>()
-                        .FindAll(
+                        .Where(
                             i =>
                                 InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral &&
                                 MinionManager.IsMinion(i, true)))
@@ -563,15 +529,15 @@ namespace BrianSharp.Common
             }
             if (CurrentMode == Mode.Clear)
             {
-                foreach (var obj in ObjectManager.Get<Obj_AI_Turret>().FindAll(i => InAutoAttackRange(i)))
+                foreach (var obj in ObjectManager.Get<Obj_AI_Turret>().Where(i => InAutoAttackRange(i)))
                 {
                     return obj;
                 }
-                foreach (var obj in ObjectManager.Get<Obj_BarracksDampener>().FindAll(i => InAutoAttackRange(i)))
+                foreach (var obj in ObjectManager.Get<Obj_BarracksDampener>().Where(i => InAutoAttackRange(i)))
                 {
                     return obj;
                 }
-                foreach (var obj in ObjectManager.Get<Obj_HQ>().FindAll(i => InAutoAttackRange(i)))
+                foreach (var obj in ObjectManager.Get<Obj_HQ>().Where(i => InAutoAttackRange(i)))
                 {
                     return obj;
                 }
@@ -588,7 +554,7 @@ namespace BrianSharp.Common
             {
                 target =
                     ObjectManager.Get<Obj_AI_Minion>()
-                        .FindAll(i => InAutoAttackRange(i) && i.Team == GameObjectTeam.Neutral)
+                        .Where(i => InAutoAttackRange(i) && i.Team == GameObjectTeam.Neutral)
                         .MaxOrDefault(i => i.MaxHealth);
                 if (target != null)
                 {
@@ -611,7 +577,7 @@ namespace BrianSharp.Common
                         return _prevMinion;
                     }
                 }
-                target = (from obj in ObjectManager.Get<Obj_AI_Minion>().FindAll(i => InAutoAttackRange(i))
+                target = (from obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => InAutoAttackRange(i))
                     let hpPred =
                         HealthPrediction.LaneClearHealthPrediction(
                             obj, (int) (Player.AttackDelay * 1000 * ClearWaitTime), GetCurrentFarmDelay)
@@ -633,7 +599,7 @@ namespace BrianSharp.Common
         {
             Obj_AI_Hero killableObj = null;
             var hitsToKill = double.MaxValue;
-            foreach (var obj in HeroManager.Enemies.FindAll(i => InAutoAttackRange(i)))
+            foreach (var obj in HeroManager.Enemies.Where(i => InAutoAttackRange(i)))
             {
                 var killHits = obj.Health /
                                (Player.ChampionName == "Azir"
@@ -690,7 +656,7 @@ namespace BrianSharp.Common
 
         private static void FireAfterAttack(AttackableUnit target)
         {
-            if (AfterAttack != null)
+            if (AfterAttack != null && target.IsValidTarget())
             {
                 AfterAttack(target);
             }

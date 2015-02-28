@@ -124,14 +124,17 @@ namespace BrianSharp.Plugin
                 args.SData.Name == "UdyrBearStance" || args.SData.Name == "UdyrPhoenixStance")
             {
                 _aaCount = 0;
+                if (args.SData.Name != "UdyrPhoenixStance")
+                {
+                    _phoenixActive = false;
+                }
             }
         }
 
         private void AfterAttack(AttackableUnit target)
         {
-            if (!target.IsValidTarget() ||
-                (Orbwalk.CurrentMode != Orbwalker.Mode.Combo && Orbwalk.CurrentMode != Orbwalker.Mode.Clear) ||
-                (CurStance != Stance.Tiger && CurStance != Stance.Phoenix && CurStance != Stance.Turtle))
+            if ((Orbwalk.CurrentMode != Orbwalker.Mode.Combo && Orbwalk.CurrentMode != Orbwalker.Mode.Clear) ||
+                (CurStance != Stance.Tiger && CurStance != Stance.Phoenix))
             {
                 return;
             }
@@ -139,13 +142,20 @@ namespace BrianSharp.Plugin
             if (CurStance == Stance.Phoenix && Player.Buffs.Find(i => i.DisplayName == "UdyrPhoenixStance").Count == 1)
             {
                 _phoenixActive = true;
-                Utility.DelayAction.Add(50, () => _phoenixActive = false);
+                Utility.DelayAction.Add(
+                    100, () =>
+                    {
+                        if (_phoenixActive)
+                        {
+                            _phoenixActive = false;
+                        }
+                    });
             }
         }
 
         private void Fight()
         {
-            var target = E.GetTarget();
+            var target = E.GetTarget(200);
             if (target == null)
             {
                 return;
@@ -155,28 +165,26 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if ((GetValue<bool>("Combo", "E") && E.Level > 0 && !target.HasBuff("UdyrBearStunCheck")) ||
-                !Orbwalk.InAutoAttackRange(target, 30) ||
-                (GetValue<bool>("Combo", "W") && CurStance == Stance.Turtle && _aaCount < 2))
+            if (Orbwalk.InAutoAttackRange(target, 100) &&
+                (!GetValue<bool>("Combo", "E") || E.Level == 0 || target.HasBuff("UdyrBearStunCheck")))
             {
-                return;
-            }
-            if (GetValue<bool>("Combo", "W") && W.IsReady() &&
-                Player.HealthPercentage() < GetValue<Slider>("Combo", "WHpU").Value &&
-                ((CurStance == Stance.Tiger && _aaCount > 1) ||
-                 (CurStance == Stance.Phoenix && (_aaCount > 3 || _phoenixActive)) || (Q.Level == 0 && R.Level == 0)) &&
-                W.Cast(PacketCast))
-            {
-                return;
-            }
-            if (GetValue<bool>("Combo", "Q") && Q.Cast(PacketCast))
-            {
-                return;
-            }
-            if (GetValue<bool>("Combo", "R") && R.IsReady() &&
-                (!GetValue<bool>("Combo", "Q") || Q.Level == 0 || (CurStance == Stance.Tiger && _aaCount > 1)))
-            {
-                R.Cast(PacketCast);
+                if (GetValue<bool>("Combo", "Q") && Q.Cast(PacketCast))
+                {
+                    return;
+                }
+                if (GetValue<bool>("Combo", "R") && R.IsReady() &&
+                    (!GetValue<bool>("Combo", "Q") || Q.Level == 0 || (CurStance == Stance.Tiger && _aaCount > 1)) &&
+                    R.Cast(PacketCast))
+                {
+                    return;
+                }
+                if (GetValue<bool>("Combo", "W") && W.IsReady() &&
+                    Player.HealthPercentage() < GetValue<Slider>("Combo", "WHpU").Value &&
+                    ((CurStance == Stance.Tiger && _aaCount > 1) ||
+                     (CurStance == Stance.Phoenix && (_aaCount > 2 || _phoenixActive)) || (Q.Level == 0 && R.Level == 0)))
+                {
+                    W.Cast(PacketCast);
+                }
             }
         }
 
@@ -184,15 +192,7 @@ namespace BrianSharp.Plugin
         {
             SmiteMob();
             var target = Orbwalk.GetPossibleTarget();
-            if (target == null || (GetValue<bool>("Clear", "W") && CurStance == Stance.Turtle && _aaCount < 2))
-            {
-                return;
-            }
-            if (GetValue<bool>("Clear", "W") && W.IsReady() &&
-                Player.HealthPercentage() < GetValue<Slider>("Clear", "WHpU").Value &&
-                ((CurStance == Stance.Tiger && _aaCount > 2) ||
-                 (CurStance == Stance.Phoenix && (_aaCount > 3 || _phoenixActive)) || (Q.Level == 0 && R.Level == 0)) &&
-                W.Cast(PacketCast))
+            if (target == null)
             {
                 return;
             }
@@ -201,8 +201,16 @@ namespace BrianSharp.Plugin
                 return;
             }
             if (GetValue<bool>("Clear", "R") && R.IsReady() &&
-                (!GetValue<bool>("Clear", "Q") || Q.Level == 0 || (CurStance == Stance.Tiger && _aaCount > 2)) &&
+                (!GetValue<bool>("Clear", "Q") || Q.Level == 0 || (CurStance == Stance.Tiger && _aaCount > 1)) &&
                 R.Cast(PacketCast))
+            {
+                return;
+            }
+            if (GetValue<bool>("Clear", "W") && W.IsReady() &&
+                Player.HealthPercentage() < GetValue<Slider>("Clear", "WHpU").Value &&
+                ((CurStance == Stance.Tiger && _aaCount > 1) ||
+                 (CurStance == Stance.Phoenix && (_aaCount > 2 || _phoenixActive)) || (Q.Level == 0 && R.Level == 0)) &&
+                W.Cast(PacketCast))
             {
                 return;
             }
@@ -258,22 +266,25 @@ namespace BrianSharp.Plugin
         private void StunCycle()
         {
             var obj =
-                HeroManager.Enemies.FindAll(i => i.IsValidTarget(E.Range) && !i.HasBuff("UdyrBearStunCheck"))
+                HeroManager.Enemies.Where(i => i.IsValidTarget(E.Range) && !i.HasBuff("UdyrBearStunCheck"))
                     .MinOrDefault(i => i.Distance(Player));
-            CustomOrbwalk(null);
             if (obj == null)
             {
+                Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPos);
                 return;
             }
-            if (E.IsReady())
-            {
-                E.Cast(PacketCast);
-            }
-            if (CurStance != Stance.Bear)
+            if (E.IsReady() && E.Cast(PacketCast))
             {
                 return;
             }
-            Player.IssueOrder(GameObjectOrder.AttackUnit, obj);
+            if (Orbwalk.InAutoAttackRange(obj))
+            {
+                Player.IssueOrder(GameObjectOrder.AttackUnit, obj);
+            }
+            else
+            {
+                Player.IssueOrder(GameObjectOrder.MoveTo, obj.ServerPosition);
+            }
         }
 
         private void KillSteal()

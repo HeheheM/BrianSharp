@@ -74,7 +74,7 @@ namespace BrianSharp.Plugin
                         AddItem(antiGapMenu, "Q", "Use Q");
                         AddItem(antiGapMenu, "QSlow", "-> Slow If Cant Knockback (Skillshot)");
                         foreach (var spell in
-                            AntiGapcloser.Spells.FindAll(
+                            AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -87,7 +87,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(interruptMenu, "Q", "Use Q");
                         foreach (var spell in
-                            Interrupter.Spells.FindAll(
+                            Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -211,7 +211,7 @@ namespace BrianSharp.Plugin
         {
             if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady())
             {
-                var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range));
+                var target = HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range)).ToList();
                 if (!Player.HasBuff("MaokaiDrain"))
                 {
                     var rCount = GetValue<Slider>(mode, "RCountA").Value;
@@ -246,14 +246,9 @@ namespace BrianSharp.Plugin
                 {
                     return;
                 }
-                if (E.IsReady())
+                if (E.IsReady() && E.CastIfWillHit(target, -1, PacketCast))
                 {
-                    E.Speed = 1750 - Player.Distance(target);
-                    if (E.CastIfWillHit(target, -1, PacketCast))
-                    {
-                        E.Speed = 1750;
-                        return;
-                    }
+                    return;
                 }
                 if (W.CastOnUnit(target, PacketCast))
                 {
@@ -264,18 +259,9 @@ namespace BrianSharp.Plugin
             }
             else
             {
-                if (GetValue<bool>(mode, "E") && E.IsReady())
+                if (GetValue<bool>(mode, "E") && E.CastOnBestTarget(E.Width, PacketCast, true).IsCasted())
                 {
-                    var target = E.GetTarget();
-                    if (target != null)
-                    {
-                        E.Speed = 1750 - Player.Distance(target);
-                        if (E.CastIfWillHit(target, -1, PacketCast))
-                        {
-                            E.Speed = 1750;
-                            return;
-                        }
-                    }
+                    return;
                 }
                 if (GetValue<bool>(mode, "W") &&
                     (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "WHpA").Value) &&
@@ -294,7 +280,7 @@ namespace BrianSharp.Plugin
         {
             SmiteMob();
             var minionObj = MinionManager.GetMinions(
-                E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+                E.Range + E.Width, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (minionObj.Count == 0)
             {
                 return;
@@ -310,7 +296,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var pos = Q.GetLineFarmLocation(minionObj.FindAll(i => Q.IsInRange(i)));
+                var pos = Q.GetLineFarmLocation(minionObj.Where(i => Q.IsInRange(i)).ToList());
                 if (pos.MinionsHit > 0 && Q.Cast(pos.Position, PacketCast))
                 {
                     return;
@@ -318,10 +304,10 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady())
             {
-                var obj = minionObj.FindAll(i => W.IsInRange(i)).Find(i => i.MaxHealth >= 1200);
+                var obj = minionObj.Where(i => W.IsInRange(i)).Find(i => i.MaxHealth >= 1200);
                 if (obj == null && minionObj.Count(i => Orbwalk.InAutoAttackRange(i, 40)) == 0)
                 {
-                    obj = minionObj.FindAll(i => W.IsInRange(i)).MinOrDefault(i => i.Health);
+                    obj = minionObj.Where(i => W.IsInRange(i)).MinOrDefault(i => i.Health);
                 }
                 if (obj != null)
                 {
@@ -336,10 +322,8 @@ namespace BrianSharp.Plugin
             {
                 var obj =
                     ObjectManager.Get<Obj_AI_Base>()
-                        .FindAll(
-                            i =>
-                                !(i is Obj_AI_Turret) && i.IsValidTarget(W.Range + i.BoundingRadius) &&
-                                i.Distance(Game.CursorPos) < 200)
+                        .Where(
+                            i => !(i is Obj_AI_Turret) && i.IsValidTarget(W.Range) && i.Distance(Game.CursorPos) < 200)
                         .MinOrDefault(i => i.Distance(Game.CursorPos));
                 if (obj != null && W.CastOnUnit(obj, PacketCast))
                 {
@@ -405,8 +389,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(W.Range))
-                .MinOrDefault(i => i.Distance(Player));
+            var target = HeroManager.Enemies.Where(i => i.IsValidTarget(W.Range)).MinOrDefault(i => i.Distance(Player));
             var tower = ObjectManager.Get<Obj_AI_Turret>().Find(i => i.IsAlly && !i.IsDead && i.Distance(Player) <= 850);
             if (target != null && tower != null && target.Distance(tower) <= 850)
             {

@@ -146,16 +146,12 @@ namespace BrianSharp.Plugin
                 var target = E.GetTarget();
                 if (target != null)
                 {
-                    if (mode == "Combo")
+                    var predE = E.GetPrediction(target);
+                    if (predE.Hitchance >= HitChance.High &&
+                        ((mode == "Combo" && !Orbwalk.InAutoAttackRange(target, 20)) ||
+                         (mode == "Harass" && Orbwalk.InAutoAttackRange(target, 50))))
                     {
-                        if (!Orbwalk.InAutoAttackRange(target, 20))
-                        {
-                            E.Cast(target.ServerPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast);
-                        }
-                    }
-                    else if (Orbwalk.InAutoAttackRange(target, 50))
-                    {
-                        E.Cast(target.ServerPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast);
+                        E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast);
                     }
                 }
             }
@@ -215,7 +211,11 @@ namespace BrianSharp.Plugin
                 var target = E.GetTarget();
                 if (target != null && CanKill(target, E))
                 {
-                    E.Cast(target.ServerPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast);
+                    var predE = E.GetPrediction(target);
+                    if (predE.Hitchance >= HitChance.High)
+                    {
+                        E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast);
+                    }
                 }
             }
         }

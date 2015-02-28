@@ -68,7 +68,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(interruptMenu, "R", "Use R");
                         foreach (var spell in
-                            Interrupter.Spells.FindAll(
+                            Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -147,7 +147,7 @@ namespace BrianSharp.Plugin
             {
                 var obj =
                     ObjectManager.Get<Obj_AI_Base>()
-                        .FindAll(
+                        .Where(
                             i =>
                                 !(i is Obj_AI_Turret) && i.IsValidTarget(E.Range) && i != unit &&
                                 i.Distance(unit) < R.Range - 15)
@@ -175,7 +175,7 @@ namespace BrianSharp.Plugin
 
         private void AfterAttack(AttackableUnit target)
         {
-            if (!target.IsValidTarget() || !Q.IsReady())
+            if (!Q.IsReady())
             {
                 return;
             }
@@ -191,8 +191,7 @@ namespace BrianSharp.Plugin
         {
             if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady())
             {
-                var target = R.GetTarget(
-                    0, HeroManager.Enemies.FindAll(i => !GetValue<bool>("Killable", i.ChampionName)));
+                var target = R.GetTarget(0, HeroManager.Enemies.Where(i => !GetValue<bool>("Killable", i.ChampionName)));
                 if (target != null)
                 {
                     if (CanKill(target, R) && R.Cast(PacketCast))

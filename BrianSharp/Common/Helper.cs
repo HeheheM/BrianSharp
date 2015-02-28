@@ -176,6 +176,11 @@ namespace BrianSharp.Common
 
         #region Menu
 
+        public static void AddNotif(string msg, int dur)
+        {
+            Notifications.AddNotification(new Notification(msg, dur, true));
+        }
+
         public static MenuItem AddItem(Menu subMenu,
             string item,
             string display,

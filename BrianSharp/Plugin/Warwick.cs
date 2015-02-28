@@ -150,7 +150,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "R") && R.IsReady())
             {
-                var target = R.GetTarget(0, HeroManager.Enemies.FindAll(i => !GetValue<bool>("Lock", i.ChampionName)));
+                var target = R.GetTarget(0, HeroManager.Enemies.Where(i => !GetValue<bool>("Lock", i.ChampionName)));
                 if (target != null)
                 {
                     if (GetValue<bool>(mode, "RSmite") && CurrentSmiteType == SmiteType.Red && CastSmite(target, false))
@@ -259,8 +259,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var target = HeroManager.Enemies.FindAll(i => i.IsValidTarget(R.Range))
-                .MinOrDefault(i => i.Distance(Player));
+            var target = HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range)).MinOrDefault(i => i.Distance(Player));
             var tower = ObjectManager.Get<Obj_AI_Turret>().Find(i => i.IsAlly && !i.IsDead && i.Distance(Player) <= 850);
             if (target != null && tower != null && target.Distance(tower) <= 850)
             {

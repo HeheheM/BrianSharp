@@ -78,7 +78,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(antiGapMenu, "E", "Use E");
                         foreach (var spell in
-                            AntiGapcloser.Spells.FindAll(
+                            AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -91,7 +91,7 @@ namespace BrianSharp.Plugin
                     {
                         AddItem(interruptMenu, "E", "Use E");
                         foreach (var spell in
-                            Interrupter.Spells.FindAll(
+                            Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
                             AddItem(
@@ -191,7 +191,7 @@ namespace BrianSharp.Plugin
 
         private void AfterAttack(AttackableUnit target)
         {
-            if (!target.IsValidTarget() || !W.IsReady())
+            if (!W.IsReady())
             {
                 return;
             }
@@ -373,7 +373,7 @@ namespace BrianSharp.Plugin
             var obj =
                 MinionManager.GetMinions(W.Range + 100, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .Cast<Obj_AI_Minion>()
-                    .FindAll(i => Orbwalk.InAutoAttackRange(i))
+                    .Where(i => Orbwalk.InAutoAttackRange(i))
                     .Find(i => CanKill(i, W, GetBonusDmg(i)));
             if (obj == null)
             {
@@ -405,13 +405,13 @@ namespace BrianSharp.Plugin
             else
             {
                 obj =
-                    HeroManager.AllHeroes.FindAll(
+                    HeroManager.AllHeroes.Where(
                         i =>
                             !i.IsMe && i.IsValidTarget(Q.Range + i.BoundingRadius, false) &&
                             i.Distance(jumpPos[0]) < 200).MinOrDefault(i => i.Distance(jumpPos[0])) ??
                     (Obj_AI_Base)
                         ObjectManager.Get<Obj_AI_Minion>()
-                            .FindAll(
+                            .Where(
                                 i => i.IsValidTarget(Q.Range + i.BoundingRadius, false) && i.Distance(jumpPos[0]) < 200)
                             .MinOrDefault(i => i.Distance(jumpPos[0]));
             }

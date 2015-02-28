@@ -47,10 +47,10 @@ namespace BrianSharp.Plugin
                     }
                     var antiMenu = new Menu("Anti (R)", "Anti");
                     {
-                        AddItem(antiMenu, "Zed", "Zed");
                         AddItem(antiMenu, "Fizz", "Fizz");
-                        AddItem(antiMenu, "Vlad", "Vladimir");
                         AddItem(antiMenu, "Karthus", "Karthus");
+                        AddItem(antiMenu, "Vlad", "Vladimir");
+                        AddItem(antiMenu, "Zed", "Zed");
                         comboMenu.AddSubMenu(antiMenu);
                     }
                     AddItem(comboMenu, "Q", "Use Q");
@@ -170,7 +170,7 @@ namespace BrianSharp.Plugin
                 Player.HasBuff("JudicatorRighteousFury"))
             {
                 var target =
-                    HeroManager.Enemies.FindAll(i => Orbwalk.InAutoAttackRange(i))
+                    HeroManager.Enemies.Where(i => Orbwalk.InAutoAttackRange(i))
                         .MaxOrDefault(i => i.CountEnemiesInRange(150));
                 if (target != null)
                 {
@@ -204,7 +204,7 @@ namespace BrianSharp.Plugin
                 if (GetValue<bool>(mode, "WHeal"))
                 {
                     var obj =
-                        HeroManager.Allies.FindAll(
+                        HeroManager.Allies.Where(
                             i =>
                                 i.IsValidTarget(W.Range, false) && GetValue<bool>("Heal", MenuName(i)) &&
                                 i.HealthPercentage() < GetValue<Slider>("Heal", MenuName(i) + "HpU").Value &&
@@ -234,7 +234,7 @@ namespace BrianSharp.Plugin
                 if (GetValue<bool>(mode, "RSave"))
                 {
                     var obj =
-                        HeroManager.Allies.FindAll(
+                        HeroManager.Allies.Where(
                             i =>
                                 i.IsValidTarget(R.Range, false) && GetValue<bool>("Save", MenuName(i)) &&
                                 i.HealthPercentage() < GetValue<Slider>("Save", MenuName(i) + "HpU").Value &&
@@ -248,7 +248,7 @@ namespace BrianSharp.Plugin
                 if (GetValue<StringList>(mode, "RAnti").SelectedIndex > 0)
                 {
                     var obj =
-                        HeroManager.Allies.FindAll(
+                        HeroManager.Allies.Where(
                             i =>
                                 i.IsValidTarget(R.Range, false) && _rAntiDetected.ContainsKey(i.NetworkId) &&
                                 Game.Time > _rAntiDetected[i.NetworkId].StartTick && !i.HasBuff("Undying Rage"))
@@ -368,7 +368,7 @@ namespace BrianSharp.Plugin
                 _rAntiDetected.Remove(key.NetworkId);
             }
             foreach (var obj in
-                HeroManager.Allies.FindAll(i => !i.IsDead && !_rAntiDetected.ContainsKey(i.NetworkId)))
+                HeroManager.Allies.Where(i => !i.IsDead && !_rAntiDetected.ContainsKey(i.NetworkId)))
             {
                 if ((GetValue<StringList>("Combo", "RAnti").SelectedIndex == 1 && obj.IsMe) ||
                     (GetValue<StringList>("Combo", "RAnti").SelectedIndex == 2 && !obj.IsMe) ||
