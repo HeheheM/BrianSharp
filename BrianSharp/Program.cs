@@ -37,7 +37,7 @@ namespace BrianSharp
             var plugin = Type.GetType("BrianSharp.Plugin." + PlayerName);
             if (plugin == null)
             {
-                Helper.AddNotif(string.Format("[Brian Sharp] - {0}: Not support !", PlayerName), 2000);
+                Helper.AddNotif(string.Format("[Brian Sharp] - {0}: Not support !", PlayerName), 5000);
                 return;
             }
             MainMenu = new Menu("Brian Sharp", "BrianSharp", true);
@@ -70,7 +70,7 @@ namespace BrianSharp
             }
             Ignite = Player.GetSpellSlot("summonerdot");
             MainMenu.AddToMainMenu();
-            Helper.AddNotif(string.Format("[Brian Sharp] - {0}: Loaded !", PlayerName), 2000);
+            Helper.AddNotif(string.Format("[Brian Sharp] - {0}: Loaded !", PlayerName), 5000);
         }
     }
 }

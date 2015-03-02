@@ -15,11 +15,11 @@ namespace BrianSharp.Plugin
             Q = new Spell(SpellSlot.Q, 650);
             Q2 = new Spell(SpellSlot.Q, 650);
             W = new Spell(SpellSlot.W);
-            E = new Spell(SpellSlot.E, 1040);
+            E = new Spell(SpellSlot.E, 1075);
             R = new Spell(SpellSlot.R, 550);
             Q.SetSkillshot(0.6f, 250, 2000, false, SkillshotType.SkillshotCircle);
-            Q2.SetSkillshot(0.6f, 150, 2000, false, SkillshotType.SkillshotCircle);
-            E.SetSkillshot(0.25f, 75, 1250, false, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.6f, 160, 2000, false, SkillshotType.SkillshotCircle);
+            E.SetSkillshot(0.25f, 35, 1250, false, SkillshotType.SkillshotLine);
             R.SetSkillshot(0.5f, 550, 800, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", PlayerName + "_Plugin");
@@ -184,7 +184,7 @@ namespace BrianSharp.Plugin
         private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "Q") ||
-                !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !Q.CanCast(unit))
+                !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !Q.IsReady())
             {
                 return;
             }
@@ -256,7 +256,7 @@ namespace BrianSharp.Plugin
                 else
                 {
                     var obj = minionObj.Find(i => i.MaxHealth >= 1200);
-                    if (obj != null && Q.IsInRange(obj, Q.Range + Q2.Width) && Q.CastIfWillHit(obj, -1, PacketCast))
+                    if (obj != null && Q.IsInRange(obj, Q.Range + Q2.Width) && Q2.CastIfWillHit(obj, -1, PacketCast))
                     {
                         return;
                     }
@@ -342,7 +342,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var target = Q.GetTarget(Q2.Width);
-                if (target != null && CanKill(target, Q) && Q.CastIfWillHit(target, -1, PacketCast))
+                if (target != null && CanKill(target, Q) && Q2.CastIfWillHit(target, -1, PacketCast))
                 {
                     return;
                 }
