@@ -10,7 +10,7 @@ namespace BrianSharp
 {
     internal class Program
     {
-        public static Obj_AI_Hero Player;
+        public static Obj_AI_Hero MyHero;
         public static Spell Q, Q2, W, W2, E, E2, R;
         public static SpellSlot Flash, Smite, Ignite;
         public static Items.Item Tiamat, Hydra, Youmuu, Zhonya, Seraph, Sheen, Iceborn, Trinity;
