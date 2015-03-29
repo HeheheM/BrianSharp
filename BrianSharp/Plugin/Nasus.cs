@@ -83,7 +83,7 @@ namespace BrianSharp.Plugin
                 }
                 MainMenu.AddSubMenu(champMenu);
             }
-            Game.OnGameUpdate += OnGameUpdate;
+            Game.OnUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Orbwalk.AfterAttack += AfterAttack;
