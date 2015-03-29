@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Linq;
 using BrianSharp.Common;
@@ -109,14 +109,14 @@ namespace BrianSharp.Plugin
                 }
                 MainMenu.AddSubMenu(champMenu);
             }
-            Game.OnGameUpdate += OnGameUpdate;
+            Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             //Interrupter2.OnInterruptableTarget += OnInterruptableTarget;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
-        private void OnGameUpdate(EventArgs args)
+        private void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
