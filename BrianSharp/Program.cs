@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using BrianSharp.Common;
 using LeagueSharp;
@@ -27,7 +27,7 @@ namespace BrianSharp
             {
                 OnGameStart(new EventArgs());
             }
-            Game.OnGameStart += OnGameStart;
+            Game.OnStart += OnGameStart;
         }
 
         private static void OnGameStart(EventArgs args)
