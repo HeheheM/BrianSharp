@@ -49,7 +49,7 @@ namespace BrianSharp
             }
             TargetSelector.AddToMenu(MainMenu.AddSubMenu(new Menu("Target Selector", "TS")));
             Orbwalk.AddToMainMenu(MainMenu);
-            Activator.CreateInstance(plugin);
+            DynamicInitializer.NewInstace(plugin);
             Helper.AddItem(MainMenu.SubMenu(PlayerName + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
             Tiamat = ItemData.Tiamat_Melee_Only.GetItem();
             Hydra = ItemData.Ravenous_Hydra_Melee_Only.GetItem();
