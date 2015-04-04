@@ -71,6 +71,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common\Helper.cs" />
+    <Compile Include="Common\DynamicInitializer.cs" />
     <Compile Include="Common\Orbwalker.cs" />
     <Compile Include="Plugin\Aatrox.cs" />
     <Compile Include="Plugin\Amumu.cs" />
